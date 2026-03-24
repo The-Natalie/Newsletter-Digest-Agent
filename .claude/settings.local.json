@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd \"/Users/natalie/Documents/Agentic AI/Newsletter Digest Agent\" && pip install -r requirements.txt 2>&1)",
+      "Bash(cd \"/Users/natalie/Documents/Agentic AI/Newsletter Digest Agent\" && python3 -m venv .venv)",
+      "Bash(cd \"/Users/natalie/Documents/Agentic AI/Newsletter Digest Agent\" && .venv/bin/pip install -r requirements.txt 2>&1)",
+      "Bash(cd \"/Users/natalie/Documents/Agentic AI/Newsletter Digest Agent\" && .venv/bin/python -c \"import fastapi, sqlalchemy, imapclient, anthropic, sentence_transformers; print\\('all imports OK'\\)\")"
+    ]
+  }
+}
