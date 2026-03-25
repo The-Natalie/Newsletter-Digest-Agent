@@ -459,40 +459,41 @@ When implementation is complete, the execution report should include:
 
 ## VALIDATION OUTPUT REFERENCE — EXACT OUTPUTS TO CHECK (DO NOT SKIP)
 
-This section provides a direct mapping of every step in "## VALIDATION COMMANDS" to its exact expected output.
+This section provides a complete reference for EVERYTHING the user must verify after running /execute.
 
-Use this as the direct reference for matching Claude’s output during validation.
+It MUST include every checkable item from the following sections:
 
-For each step:
-- Confirm Claude ran the step
-- Match the output EXACTLY to the expected result below
-- Do NOT interpret or rephrase
-- Do NOT omit setup steps such as installing dependencies, creating or using a virtual environment, starting a development server, running tests, or running /e2e-test
+- ## STEP-BY-STEP TASKS
+- ## VALIDATION COMMANDS
+- ## MANUAL VERIFICATION CHECKLIST
+- ## ACCEPTANCE CRITERIA
+- ## COMPLETION CHECKLIST
 
-Every step defined in "## VALIDATION COMMANDS" MUST appear in this list.
+Nothing checkable from these sections may be omitted from this list.
 
-Each entry must:
-- Include the exact command or step
-- Include the exact expected output
-- Use the SAME output shown in the Validation Commands section
+If a file, setup step, command result, checklist item, or acceptance item must be confirmed by the user, it MUST appear in this section.
+
+Use this section as the direct reference when reviewing Claude’s output.
+
+For each item:
+- Include the exact thing that must be checked
+- Include the exact output or exact result to match in Claude’s output
 
 Do NOT summarize.
 Do NOT reword.
-Do NOT omit values.
+Do NOT omit setup steps.
+Do NOT omit file existence checks.
+Do NOT omit checklist items even if they appear redundant.
+Do NOT omit items just because they are not in "## VALIDATION COMMANDS".
 
 This list must be complete and exact.
 
-- Command or step:
-  <exact command or exact step>
-  Expected output:
-  <exact expected output>
+- Item to check:
+  <exact item that must be verified>
+  Expected output or result:
+  <exact expected output or exact result to confirm>
 
-- Command or step:
-  <exact command or exact step>
-  Expected output:
-  <exact expected output>
-
-- Command or step:
-  <exact command or exact step>
-  Expected output:
-  <exact expected output>
+- Item to check:
+  <exact item that must be verified>
+  Expected output or result:
+  <exact expected output or exact result to confirm>
