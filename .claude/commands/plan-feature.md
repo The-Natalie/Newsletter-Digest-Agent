@@ -459,34 +459,28 @@ When implementation is complete, the execution report should include:
 
 ## VALIDATION OUTPUT REFERENCE — EXACT OUTPUTS TO CHECK (DO NOT SKIP)
 
-This section provides a complete reference for EVERYTHING the user must verify after running /execute.
+This section provides a reference for EVERYTHING the user must visually verify after running /execute.
 
-It MUST include every checkable item from the following sections:
+It MUST include every item that produces visible output in the Claude terminal or standard terminal.
 
-- ## STEP-BY-STEP TASKS
-- ## VALIDATION COMMANDS
-- ## MANUAL VERIFICATION CHECKLIST
-- ## ACCEPTANCE CRITERIA
-- ## COMPLETION CHECKLIST
+This includes:
+- commands that produce output
+- printed results
+- success messages (e.g. "PASSED")
+- file existence checks
 
-Nothing checkable from these sections may be omitted from this list.
+DO NOT include:
+- internal assertions (e.g. assert statements)
+- implied checks that do not produce output
+- conditions that are only validated implicitly by passing tests
 
-If a file, setup step, command result, checklist item, or acceptance item must be confirmed by the user, it MUST appear in this section.
+If a condition is validated by a test that prints "PASSED", do NOT list the internal assertions separately.
+Only include the final visible success output.
+
+Nothing that produces visible output may be omitted.
+Nothing that does NOT produce visible output may be included.
 
 Use this section as the direct reference when reviewing Claude’s output.
-
-For each item:
-- Include the exact thing that must be checked
-- Include the exact output or exact result to match in Claude’s output
-
-Do NOT summarize.
-Do NOT reword.
-Do NOT omit setup steps.
-Do NOT omit file existence checks.
-Do NOT omit checklist items even if they appear redundant.
-Do NOT omit items just because they are not in "## VALIDATION COMMANDS".
-
-This list must be complete and exact.
 
 - Item to check:
   <exact item that must be verified>
