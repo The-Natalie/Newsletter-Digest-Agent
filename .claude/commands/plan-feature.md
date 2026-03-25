@@ -461,26 +461,33 @@ When implementation is complete, the execution report should include:
 
 This section provides a reference for EVERYTHING the user must visually verify after running /execute.
 
-It MUST include every item that produces visible output in the Claude terminal or standard terminal.
+It MUST include every item from "## MANUAL VERIFICATION CHECKLIST" and every item that produces visible output in the Claude terminal or standard terminal.
 
 This includes:
+- every item from "## MANUAL VERIFICATION CHECKLIST"
 - commands that produce output
 - printed results
 - success messages (e.g. "PASSED")
 - file existence checks
+- file creation and file modification checks
 
-DO NOT include:
-- internal assertions (e.g. assert statements)
-- implied checks that do not produce output
-- conditions that are only validated implicitly by passing tests
+DO NOT summarize commands or outputs.
+
+Every item must include:
+- the exact full command (no truncation, no shortening)
+- the exact full output as it appears in the terminal
+
+Do NOT use placeholders.
+Do NOT shorten output.
+Do NOT omit lines from multi-line output.
 
 If a condition is validated by a test that prints "PASSED", do NOT list the internal assertions separately.
 Only include the final visible success output.
 
-Nothing that produces visible output may be omitted.
-Nothing that does NOT produce visible output may be included.
-
+Nothing from "## MANUAL VERIFICATION CHECKLIST" may be omitted. Nothing that produces visible output may be omitted.
 Use this section as the direct reference when reviewing Claude’s output.
+If a "## MANUAL VERIFICATION CHECKLIST" item is confirmed by file creation, file modification, or a final output report instead of a validation command, the expected result must state that exact visible evidence.
+Nothing that does NOT produce visible output may be included.
 
 - Item to check:
   <exact item that must be verified>
