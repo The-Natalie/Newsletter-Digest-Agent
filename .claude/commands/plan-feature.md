@@ -470,12 +470,24 @@ This includes:
 - success messages (e.g. "PASSED")
 - file existence checks
 - file creation and file modification checks
+- every file listed in "Files created" or "Files modified" in the execution output must appear as its own item
 
 DO NOT summarize commands or outputs.
 
 Every item must include:
 - the exact full command (no truncation, no shortening)
 - the exact full output as it appears in the terminal
+
+DO NOT create multiple items for the same validation.
+
+If a validation command already exists for a check:
+- DO NOT create an additional item that restates the same check in plain English
+- DO NOT create "Confirmed by Level X" entries
+- DO NOT duplicate items from "## MANUAL VERIFICATION CHECKLIST" if they are already covered by a validation command
+
+Each check must appear EXACTLY once in this section.
+
+Prefer the validation command version over checklist-style descriptions when both exist.
 
 Do NOT use placeholders.
 Do NOT shorten output.
