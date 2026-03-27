@@ -274,13 +274,17 @@ def parse_emails(raw_messages: list[bytes]) -> list[ParsedEmail]:
 
         if plain_text is not None:
             body = plain_text
-            # Still extract links from HTML part if it exists alongside plain text
+            # Still extract links and sections from HTML part if present alongside plain text
             if html_text is not None:
                 try:
                     html_soup = BeautifulSoup(html_text, "lxml")
                     links = _extract_links(html_soup)
                 except Exception:
                     pass
+                try:
+                    sections = _extract_sections(html_text)
+                except Exception:
+                    sections = []
         elif html_text is not None:
             soup = BeautifulSoup(html_text, "lxml")
             links = _extract_links(soup)   # extract BEFORE stripping (kept for fallback)
