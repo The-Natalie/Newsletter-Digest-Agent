@@ -49,6 +49,7 @@ def deduplicate(clusters: list[list[StoryChunk]]) -> list[StoryGroup]:
         return []
 
     groups = []
+    sourceless_count = 0
     for cluster in clusters:
         if len(cluster) > 5:
             senders = [c.sender for c in cluster]
@@ -58,7 +59,13 @@ def deduplicate(clusters: list[list[StoryChunk]]) -> list[StoryGroup]:
                 senders,
             )
         sources = _build_sources(cluster)
+        if not sources:
+            sourceless_count += 1
+            continue
         groups.append(StoryGroup(chunks=cluster, sources=sources))
+
+    if sourceless_count:
+        logger.info("Dropped %d sourceless story group(s) (no valid links)", sourceless_count)
 
     logger.info("Deduplicated %d cluster(s) into %d story group(s)", len(clusters), len(groups))
     return groups

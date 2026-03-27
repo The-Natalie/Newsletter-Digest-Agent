@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import email
+import re
 import email.utils
 import logging
 from dataclasses import dataclass, field
@@ -64,6 +65,24 @@ _BOILERPLATE_ANCHORS = frozenset({
 })
 
 
+_SECTION_SPLIT_PATTERN = re.compile(r'\n{2,}|^\s*[-*_]{3,}\s*$', re.MULTILINE)
+_MIN_SECTION_CHARS = 50
+_MD_LINK_RE = re.compile(r'\[([^\]]+)\]\((https?://[^\)]+)\)')
+
+# Substrings that identify sponsor or shell segments — checked against lowercase text.
+_BOILERPLATE_SEGMENT_SIGNALS = (
+    "sponsored by",
+    "brought to you by",
+    "presented by",
+    "this newsletter is supported by",
+    "this issue is sponsored",
+    "our sponsor",
+    "a word from our sponsor",
+    "advertisement",
+    "advertorial",
+)
+
+
 def _is_boilerplate_link(url: str, anchor_text: str) -> bool:
     """Return True if this link is a boilerplate footer/navigation link, not a story link."""
     url_lower = url.lower()
@@ -81,7 +100,89 @@ class ParsedEmail:
     sender: str           # Display name from From header, or email address if no display name
     date: datetime | None # Parsed from Date header; None if missing or unparseable
     body: str             # Cleaned plain text; empty string if extraction failed
-    links: list[dict] = field(default_factory=list)  # [{"url": "...", "anchor_text": "..."}]
+    links: list[dict] = field(default_factory=list)  # [{url, anchor_text}] — global, kept for fallback
+    sections: list[dict] = field(default_factory=list)  # [{text, links}] — per-section, preferred
+
+
+def _is_boilerplate_segment(text: str) -> bool:
+    """Return True if this text segment is sponsor or shell content, not a news story."""
+    text_lower = text.lower()
+    return any(signal in text_lower for signal in _BOILERPLATE_SEGMENT_SIGNALS)
+
+
+def _is_heading_only(text: str) -> bool:
+    """Return True if text contains only markdown headings (lines starting with #).
+
+    This is used to merge heading-only sections with the following body section,
+    keeping headline + body + links together. Short non-heading lines (e.g. the
+    '* * *' HR separators that html2text emits) are intentionally NOT treated as
+    headings — they will be filtered out by _MIN_SECTION_CHARS instead.
+    """
+    lines = [l for l in text.strip().splitlines() if l.strip()]
+    if not lines:
+        return True
+    return all(l.startswith('#') for l in lines)
+
+
+def _extract_sections(html_text: str) -> list[dict]:
+    """Convert HTML to per-section dicts with clean prose text and local links.
+
+    Uses html2text with ignore_links=False to produce markdown with inline
+    [anchor](url) syntax. Splits at blank-line/HR boundaries, merges heading-only
+    sections with the following section, extracts per-section links, strips link
+    syntax from prose, and applies boilerplate filters.
+
+    Returns:
+        List of dicts: {"text": str (clean prose), "links": list[dict]}
+        Only sections that pass boilerplate and length filters are included.
+    """
+    h = html2text.HTML2Text()
+    h.ignore_links = False   # keep [anchor](url) inline so links stay with their section
+    h.ignore_images = True
+    h.body_width = 0
+    h.unicode_snob = True
+    md_text = h.handle(html_text)
+
+    raw_sections = _SECTION_SPLIT_PATTERN.split(md_text)
+
+    # Merge heading-only sections with the next section
+    merged: list[str] = []
+    i = 0
+    while i < len(raw_sections):
+        sec = raw_sections[i].strip()
+        if _is_heading_only(sec) and i + 1 < len(raw_sections):
+            # Merge heading with next section
+            merged.append(sec + "\n\n" + raw_sections[i + 1].strip())
+            i += 2
+        else:
+            merged.append(sec)
+            i += 1
+
+    sections: list[dict] = []
+    for sec in merged:
+        sec = sec.strip()
+        if not sec:
+            continue
+
+        # Extract links from inline markdown syntax
+        links = []
+        seen_urls: set[str] = set()
+        for anchor, url in _MD_LINK_RE.findall(sec):
+            if url not in seen_urls and not _is_boilerplate_link(url, anchor):
+                seen_urls.add(url)
+                links.append({"url": url, "anchor_text": anchor})
+
+        # Strip markdown link syntax to get clean prose
+        clean_text = _MD_LINK_RE.sub(r'\1', sec).strip()
+
+        if len(clean_text) < _MIN_SECTION_CHARS:
+            continue
+        if _is_boilerplate_segment(clean_text):
+            continue
+
+        sections.append({"text": clean_text, "links": links})
+
+    return sections
 
 
 def _get_body_parts(msg) -> tuple[str | None, str | None]:
@@ -169,6 +270,7 @@ def parse_emails(raw_messages: list[bytes]) -> list[ParsedEmail]:
         plain_text, html_text = _get_body_parts(msg)
 
         links: list[dict] = []
+        sections: list[dict] = []
 
         if plain_text is not None:
             body = plain_text
@@ -181,9 +283,13 @@ def parse_emails(raw_messages: list[bytes]) -> list[ParsedEmail]:
                     pass
         elif html_text is not None:
             soup = BeautifulSoup(html_text, "lxml")
-            links = _extract_links(soup)   # extract BEFORE stripping
+            links = _extract_links(soup)   # extract BEFORE stripping (kept for fallback)
             _strip_noise(soup)
             body = _html_to_text(str(soup))
+            try:
+                sections = _extract_sections(html_text)
+            except Exception:
+                sections = []
         else:
             body = ""
 
@@ -206,6 +312,7 @@ def parse_emails(raw_messages: list[bytes]) -> list[ParsedEmail]:
                 date=date_parsed,
                 body=body,
                 links=links,
+                sections=sections,
             )
         )
 

@@ -18,20 +18,6 @@ _MAX_ENCODING_CHARS = 400   # max chars fed to the encoder per chunk
 
 _SPLIT_PATTERN = re.compile(r'\n{2,}|^\s*[-*_]{3,}\s*$', re.MULTILINE)
 
-# Substrings that identify sponsor or shell segments — checked against lowercase chunk text.
-# Conservative: only fire on unambiguous sponsor/advertorial language.
-_BOILERPLATE_SEGMENT_SIGNALS = (
-    "sponsored by",
-    "brought to you by",
-    "presented by",
-    "this newsletter is supported by",
-    "this issue is sponsored",
-    "our sponsor",
-    "a word from our sponsor",
-    "advertisement",
-    "advertorial",
-)
-
 _model: SentenceTransformer | None = None
 
 
@@ -52,44 +38,50 @@ def _get_model() -> SentenceTransformer:
 
 
 def _segment_email(parsed_email: ParsedEmail) -> list[StoryChunk]:
-    """Split email body into story candidates at blank-line and horizontal-rule boundaries."""
+    """Split email body into story candidates.
+
+    Preferred path: use pre-extracted sections from email_parser (HTML emails).
+    Each section already has local links and boilerplate filtered out.
+
+    Fallback path: split plain-text body at blank-line/HR boundaries with no links.
+    """
+    if parsed_email.sections:
+        chunks = [
+            StoryChunk(
+                text=section["text"],
+                sender=parsed_email.sender,
+                links=section["links"],
+            )
+            for section in parsed_email.sections
+            if len(section["text"]) >= _MIN_CHUNK_CHARS
+        ]
+        logger.debug(
+            "Email from %s: used %d pre-extracted sections → %d chunks",
+            parsed_email.sender, len(parsed_email.sections), len(chunks),
+        )
+        return chunks
+
+    # Fallback: plain-text email — split body, no links available
     segments = _SPLIT_PATTERN.split(parsed_email.body)
     chunks = []
     for seg in segments:
         seg = seg.strip()
-        if len(seg) >= _MIN_CHUNK_CHARS and not _is_boilerplate_segment(seg):
+        if len(seg) >= _MIN_CHUNK_CHARS:
             chunks.append(StoryChunk(
                 text=seg,
                 sender=parsed_email.sender,
-                links=_links_for_chunk(seg, parsed_email.links),
+                links=[],
             ))
-    logger.debug("Email from %s segmented into %d chunks", parsed_email.sender, len(chunks))
+    logger.debug(
+        "Email from %s: plain-text fallback → %d chunks",
+        parsed_email.sender, len(chunks),
+    )
     return chunks
 
 
 def _encoding_text(chunk: StoryChunk) -> str:
     """Return the text used for semantic encoding (title + first ~2–3 sentences)."""
     return chunk.text[:_MAX_ENCODING_CHARS]
-
-
-def _is_boilerplate_segment(text: str) -> bool:
-    """Return True if this text segment is sponsor or shell content, not a news story."""
-    text_lower = text.lower()
-    return any(signal in text_lower for signal in _BOILERPLATE_SEGMENT_SIGNALS)
-
-
-def _links_for_chunk(text: str, all_links: list[dict]) -> list[dict]:
-    """Return the subset of links whose anchor text appears in this chunk's text.
-
-    html2text with ignore_links=True strips href attributes but keeps anchor text
-    inline, so anchor text matching reliably associates links with their story chunk.
-    """
-    text_lower = text.lower()
-    return [
-        link for link in all_links
-        if link.get("anchor_text", "").lower() in text_lower
-        and link.get("anchor_text", "")  # skip links with empty anchor text
-    ]
 
 
 def embed_and_cluster(parsed_emails: list[ParsedEmail]) -> list[list[StoryChunk]]:
