@@ -31,21 +31,36 @@ _BOILERPLATE_URL_FRAGMENTS = frozenset({
     "email-preference", "email-prefs", "email-settings",
 })
 
-# Exact-match anchor texts (normalised to lowercase) that indicate footer/boilerplate links.
-# Conservative: does NOT include "read more", "learn more", "full story" (legitimate CTAs).
+# Exact-match anchor texts (normalised to lowercase) that indicate non-story links.
+# Includes generic CTAs that are too ambiguous to assign to a specific story chunk.
 _BOILERPLATE_ANCHORS = frozenset({
+    # Unsubscribe / preferences
     "unsubscribe", "opt out", "opt-out",
     "manage preferences", "update preferences", "email preferences",
+    # View / browser
     "view online", "view in browser", "view as web page", "view this email",
     "read online", "read in browser",
+    # Legal / policy
     "privacy policy", "privacy notice",
     "terms of service", "terms of use", "terms & conditions",
-    "contact us",
-    "advertise", "advertise with us",
-    "subscribe", "forward to a friend",
-    "tweet this", "share on twitter", "share on facebook",
-    "facebook", "twitter", "linkedin", "instagram", "youtube",
     "all rights reserved",
+    # Contact / admin
+    "contact us", "forward to a friend",
+    # Advertising
+    "advertise", "advertise with us",
+    "sponsored", "sponsor", "advertisement", "ad", "advertorial",
+    "presented by", "powered by", "brought to you by",
+    # Social platforms (icon links)
+    "facebook", "twitter", "linkedin", "instagram", "youtube",
+    "tweet this", "share on twitter", "share on facebook",
+    "share", "tweet", "retweet", "pin", "pin it",
+    # Navigation
+    "subscribe", "home", "about", "archive", "archives", "blog", "newsletter",
+    "back", "back to top", "next", "previous",
+    # Generic CTAs — too ambiguous to assign to a specific story
+    "read more", "learn more", "click here", "here", "more", "see more",
+    "find out more", "get started", "sign up", "try now", "try for free",
+    "try it free", "try it now", "buy now", "shop now", "download now",
 })
 
 

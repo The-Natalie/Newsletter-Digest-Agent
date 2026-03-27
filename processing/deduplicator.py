@@ -19,27 +19,16 @@ def _build_sources(cluster: list[StoryChunk]) -> list[dict]:
     """Build deduplicated source list from all chunks in a cluster."""
     sources = []
     seen_urls: set[str] = set()
-    seen_empty_senders: set[str] = set()
 
     for chunk in cluster:
-        if chunk.links:
-            for link in chunk.links:
-                url = link.get("url", "")
-                if url and url not in seen_urls:
-                    seen_urls.add(url)
-                    sources.append({
-                        "newsletter": chunk.sender,
-                        "url": url,
-                        "anchor_text": link.get("anchor_text", ""),
-                    })
-        else:
-            # No links — still record the newsletter for attribution
-            if chunk.sender not in seen_empty_senders:
-                seen_empty_senders.add(chunk.sender)
+        for link in chunk.links:
+            url = link.get("url", "")
+            if url and url not in seen_urls:
+                seen_urls.add(url)
                 sources.append({
                     "newsletter": chunk.sender,
-                    "url": "",
-                    "anchor_text": "",
+                    "url": url,
+                    "anchor_text": link.get("anchor_text", ""),
                 })
 
     return sources

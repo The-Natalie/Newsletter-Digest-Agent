@@ -18,6 +18,20 @@ _MAX_ENCODING_CHARS = 400   # max chars fed to the encoder per chunk
 
 _SPLIT_PATTERN = re.compile(r'\n{2,}|^\s*[-*_]{3,}\s*$', re.MULTILINE)
 
+# Substrings that identify sponsor or shell segments — checked against lowercase chunk text.
+# Conservative: only fire on unambiguous sponsor/advertorial language.
+_BOILERPLATE_SEGMENT_SIGNALS = (
+    "sponsored by",
+    "brought to you by",
+    "presented by",
+    "this newsletter is supported by",
+    "this issue is sponsored",
+    "our sponsor",
+    "a word from our sponsor",
+    "advertisement",
+    "advertorial",
+)
+
 _model: SentenceTransformer | None = None
 
 
@@ -43,7 +57,7 @@ def _segment_email(parsed_email: ParsedEmail) -> list[StoryChunk]:
     chunks = []
     for seg in segments:
         seg = seg.strip()
-        if len(seg) >= _MIN_CHUNK_CHARS:
+        if len(seg) >= _MIN_CHUNK_CHARS and not _is_boilerplate_segment(seg):
             chunks.append(StoryChunk(
                 text=seg,
                 sender=parsed_email.sender,
@@ -56,6 +70,12 @@ def _segment_email(parsed_email: ParsedEmail) -> list[StoryChunk]:
 def _encoding_text(chunk: StoryChunk) -> str:
     """Return the text used for semantic encoding (title + first ~2–3 sentences)."""
     return chunk.text[:_MAX_ENCODING_CHARS]
+
+
+def _is_boilerplate_segment(text: str) -> bool:
+    """Return True if this text segment is sponsor or shell content, not a news story."""
+    text_lower = text.lower()
+    return any(signal in text_lower for signal in _BOILERPLATE_SEGMENT_SIGNALS)
 
 
 def _links_for_chunk(text: str, all_links: list[dict]) -> list[dict]:
