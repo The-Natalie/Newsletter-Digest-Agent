@@ -26,6 +26,39 @@ _HIDDEN_STYLE_PATTERNS = (
 )
 _HIDDEN_CLASS_KEYWORDS = ("preheader", "preview-text", "preview")
 
+_BOILERPLATE_URL_FRAGMENTS = frozenset({
+    "unsubscribe", "optout", "opt-out", "manage-subscription",
+    "email-preference", "email-prefs", "email-settings",
+})
+
+# Exact-match anchor texts (normalised to lowercase) that indicate footer/boilerplate links.
+# Conservative: does NOT include "read more", "learn more", "full story" (legitimate CTAs).
+_BOILERPLATE_ANCHORS = frozenset({
+    "unsubscribe", "opt out", "opt-out",
+    "manage preferences", "update preferences", "email preferences",
+    "view online", "view in browser", "view as web page", "view this email",
+    "read online", "read in browser",
+    "privacy policy", "privacy notice",
+    "terms of service", "terms of use", "terms & conditions",
+    "contact us",
+    "advertise", "advertise with us",
+    "subscribe", "forward to a friend",
+    "tweet this", "share on twitter", "share on facebook",
+    "facebook", "twitter", "linkedin", "instagram", "youtube",
+    "all rights reserved",
+})
+
+
+def _is_boilerplate_link(url: str, anchor_text: str) -> bool:
+    """Return True if this link is a boilerplate footer/navigation link, not a story link."""
+    url_lower = url.lower()
+    anchor_lower = anchor_text.lower().strip()
+    if any(fragment in url_lower for fragment in _BOILERPLATE_URL_FRAGMENTS):
+        return True
+    if anchor_lower in _BOILERPLATE_ANCHORS:
+        return True
+    return False
+
 
 @dataclass
 class ParsedEmail:
@@ -53,7 +86,7 @@ def _extract_links(soup: BeautifulSoup) -> list[dict]:
         if not url or url.startswith("mailto:"):
             continue
         anchor_text = a.get_text(strip=True)
-        if anchor_text:
+        if anchor_text and not _is_boilerplate_link(url, anchor_text):
             links.append({"url": url, "anchor_text": anchor_text})
     return links
 

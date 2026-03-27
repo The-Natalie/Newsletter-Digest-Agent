@@ -47,7 +47,7 @@ def _segment_email(parsed_email: ParsedEmail) -> list[StoryChunk]:
             chunks.append(StoryChunk(
                 text=seg,
                 sender=parsed_email.sender,
-                links=parsed_email.links,
+                links=_links_for_chunk(seg, parsed_email.links),
             ))
     logger.debug("Email from %s segmented into %d chunks", parsed_email.sender, len(chunks))
     return chunks
@@ -56,6 +56,20 @@ def _segment_email(parsed_email: ParsedEmail) -> list[StoryChunk]:
 def _encoding_text(chunk: StoryChunk) -> str:
     """Return the text used for semantic encoding (title + first ~2–3 sentences)."""
     return chunk.text[:_MAX_ENCODING_CHARS]
+
+
+def _links_for_chunk(text: str, all_links: list[dict]) -> list[dict]:
+    """Return the subset of links whose anchor text appears in this chunk's text.
+
+    html2text with ignore_links=True strips href attributes but keeps anchor text
+    inline, so anchor text matching reliably associates links with their story chunk.
+    """
+    text_lower = text.lower()
+    return [
+        link for link in all_links
+        if link.get("anchor_text", "").lower() in text_lower
+        and link.get("anchor_text", "")  # skip links with empty anchor text
+    ]
 
 
 def embed_and_cluster(parsed_emails: list[ParsedEmail]) -> list[list[StoryChunk]]:
