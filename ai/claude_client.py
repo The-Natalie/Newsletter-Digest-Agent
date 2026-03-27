@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 _TOOL_NAME = "create_digest_entries"
 _MAX_TOKENS = 8192
 _MAX_CHUNK_CHARS = 600
+_MAX_STORY_GROUPS = 50   # max groups per Claude call; keeps output within _MAX_TOKENS
 
 _TOOL_SCHEMA: dict = {
     "name": _TOOL_NAME,
@@ -120,6 +121,18 @@ async def generate_digest(story_groups: list[StoryGroup], folder: str) -> list[d
     if not story_groups:
         return []
 
+    # Sort by source count descending (most cross-covered stories first), then cap.
+    # This prioritises multi-newsletter coverage and keeps output within _MAX_TOKENS.
+    if len(story_groups) > _MAX_STORY_GROUPS:
+        total_available = len(story_groups)
+        story_groups = sorted(story_groups, key=lambda g: len(g.sources), reverse=True)
+        story_groups = story_groups[:_MAX_STORY_GROUPS]
+        logger.info(
+            "Capped story groups to top %d by source count (%d total available)",
+            _MAX_STORY_GROUPS,
+            total_available,
+        )
+
     client = _get_client()
     user_message = _build_user_message(story_groups, folder)
 
@@ -142,6 +155,13 @@ async def generate_digest(story_groups: list[StoryGroup], folder: str) -> list[d
     except anthropic.APIError as exc:
         logger.error("Claude API error: %s", exc)
         raise
+
+    logger.debug(
+        "Claude response: stop_reason=%r  input_tokens=%d  output_tokens=%d",
+        response.stop_reason,
+        response.usage.input_tokens,
+        response.usage.output_tokens,
+    )
 
     # Extract tool input from the response
     tool_input: dict | None = None
