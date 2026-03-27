@@ -7,6 +7,7 @@ import logging
 from dataclasses import dataclass, field
 from datetime import datetime
 from email import policy
+from urllib.parse import urlparse, urlunparse, urlencode, parse_qs
 
 import html2text
 from bs4 import BeautifulSoup
@@ -77,32 +78,45 @@ _BOILERPLATE_ANCHOR_SUBSTRINGS = (
 )
 
 _SECTION_SPLIT_PATTERN = re.compile(r'\n{2,}|^\s*[-*_]{3,}\s*$', re.MULTILINE)
-_MIN_SECTION_CHARS = 50
+_MIN_SECTION_CHARS = 100
 _MD_LINK_RE = re.compile(r'\[([^\]]+)\]\((https?://[^\)]+)\)')
 
-# Substrings that identify sponsor or shell segments — checked against lowercase text.
-# All entries are multi-word phrases to avoid false positives on real story text that
-# incidentally contains a single boilerplate word (e.g. a story that mentions "unsubscribe"
-# as part of a longer sentence is not filtered; a footer that says
-# "manage your subscriptions" is).
+# Tracking/analytics query parameters stripped during URL normalization.
+# utm_* prefix is handled separately (prefix match). Entries here are exact param names.
+_TRACKING_PARAMS = frozenset({
+    # Click IDs
+    "fbclid", "gclid", "msclkid", "yclid", "twclid", "igshid",
+    # Email platform tracking
+    "mc_cid", "mc_eid",          # Mailchimp
+    "_hsenc", "_hsmi",           # HubSpot
+    "mkt_tok",                   # Marketo
+    # Social / referral
+    "li_fat_id",                 # LinkedIn
+    "ref",                       # generic referral
+})
+
+# Base domains for social platform links — used by _is_boilerplate_url().
+# Links to these domains within sections are structural (share buttons, profile icons),
+# not story destinations. Stored as bare domains (no www. prefix).
+_SOCIAL_DOMAINS = frozenset({
+    "twitter.com", "x.com", "t.co",
+    "facebook.com", "fb.com",
+    "instagram.com",
+    "linkedin.com",
+    "youtube.com", "youtu.be",
+    "tiktok.com",
+})
+
+# Substrings that identify newsletter infrastructure segments — checked against lowercase text.
+# These are sections whose sole purpose is managing the subscription system, referral
+# growth, or legal/footer boilerplate. They contain no content value for the reader.
+#
+# NOT included: sponsor content, advertising copy, podcast/media availability, product
+# announcements, reports, job listings, or discounts — these are content sections and
+# are retained regardless of promotional nature. Very short pure-CTA sections are
+# handled by _MIN_SECTION_CHARS instead.
 _BOILERPLATE_SEGMENT_SIGNALS = (
-    # Sponsorship / advertising
-    "sponsored by",
-    "brought to you by",
-    "presented by",
-    "this newsletter is supported by",
-    "this issue is sponsored",
-    "our sponsor",
-    "a word from our sponsor",
-    "advertisement",
-    "advertorial",
-    "advertise to",
-    "to advertise with",
-    "reach our audience",
-    "want to reach our",
-    "advertising opportunities",
-    "advertiser reach",
-    # Subscription management / footer
+    # Subscription management / preferences
     "manage your subscriptions",
     "manage your email",
     "update your email preferences",
@@ -112,21 +126,69 @@ _BOILERPLATE_SEGMENT_SIGNALS = (
     "currently a free subscriber",
     "support this newsletter",
     "all rights reserved",
-    # Podcast / media availability
-    "available as a podcast",
-    "available on podcast",
-    "podcast episode",
-    "listen to the full episode",
-    "listen to this week",
-    "with you on the go",
-    # Referral / promotional
+    # Referral / audience growth systems
     "referral link",
-    "free swag",
-    # Generic newsletter meta
+    # Navigation / sharing infrastructure
     "forward this email",
     "share this newsletter",
     "recommend this newsletter",
 )
+
+
+def _normalize_url(url: str) -> str:
+    """Strip tracking parameters and normalize URL for deduplication.
+
+    - Removes utm_* parameters and known tracking params (_TRACKING_PARAMS).
+    - Lowercases scheme and host.
+    - Strips trailing slash from path (preserves bare '/').
+    - Drops the fragment (#section) — two links to the same page with different
+      anchors are treated as the same destination.
+
+    Returns the original url unchanged on any parse error.
+    """
+    try:
+        parsed = urlparse(url)
+        params = parse_qs(parsed.query, keep_blank_values=False)
+        filtered = {
+            k: v for k, v in params.items()
+            if not k.startswith("utm_") and k not in _TRACKING_PARAMS
+        }
+        clean_query = urlencode(filtered, doseq=True)
+        path = parsed.path.rstrip("/") or "/"
+        return urlunparse((
+            parsed.scheme.lower(),
+            parsed.netloc.lower(),
+            path,
+            parsed.params,
+            clean_query,
+            "",  # strip fragment
+        ))
+    except Exception:
+        return url
+
+
+def _is_boilerplate_url(url: str) -> bool:
+    """Return True if this URL points to a navigation/infrastructure destination.
+
+    Used within content sections where anchor text is not a reliable signal —
+    inline story links often have generic anchor text ('read more', 'here') and
+    must not be filtered. Only URL structure and destination domain are checked.
+
+    Checks:
+    - Email management URL fragments (unsubscribe, preferences, etc.)
+    - Social platform domains (share buttons, profile icons)
+    """
+    url_lower = url.lower()
+    if any(fragment in url_lower for fragment in _BOILERPLATE_URL_FRAGMENTS):
+        return True
+    try:
+        netloc = urlparse(url).netloc.lower()
+        bare = netloc[4:] if netloc.startswith("www.") else netloc
+        if bare in _SOCIAL_DOMAINS:
+            return True
+    except Exception:
+        pass
+    return False
 
 
 def _is_boilerplate_link(url: str, anchor_text: str) -> bool:
@@ -148,7 +210,7 @@ class ParsedEmail:
     sender: str           # Display name from From header, or email address if no display name
     date: datetime | None # Parsed from Date header; None if missing or unparseable
     body: str             # Cleaned plain text; empty string if extraction failed
-    links: list[dict] = field(default_factory=list)  # [{url, anchor_text}] — global, kept for fallback
+    links: list[dict] = field(default_factory=list)  # always empty — links are section-local; see sections field
     sections: list[dict] = field(default_factory=list)  # [{text, links}] — per-section, preferred
 
 
@@ -212,13 +274,19 @@ def _extract_sections(html_text: str) -> list[dict]:
         if not sec:
             continue
 
-        # Extract links from inline markdown syntax
-        links = []
-        seen_urls: set[str] = set()
+        # Extract links from inline markdown syntax.
+        # Normalize URLs before deduplication: strip tracking params, lowercase scheme/host.
+        # When multiple links share the same normalized destination, keep the longest anchor text.
+        best_by_norm: dict[str, dict] = {}
         for anchor, url in _MD_LINK_RE.findall(sec):
-            if url not in seen_urls and not _is_boilerplate_link(url, anchor):
-                seen_urls.add(url)
-                links.append({"url": url, "anchor_text": anchor})
+            if _is_boilerplate_url(url):
+                continue
+            norm = _normalize_url(url)
+            if norm not in best_by_norm:
+                best_by_norm[norm] = {"url": norm, "anchor_text": anchor}
+            elif len(anchor) > len(best_by_norm[norm]["anchor_text"]):
+                best_by_norm[norm]["anchor_text"] = anchor
+        links = list(best_by_norm.values())
 
         # Strip markdown link syntax to get clean prose
         clean_text = _MD_LINK_RE.sub(r'\1', sec).strip()
@@ -241,18 +309,6 @@ def _get_body_parts(msg) -> tuple[str | None, str | None]:
     html_text = html_part.get_content() if html_part is not None else None
     return plain_text, html_text
 
-
-def _extract_links(soup: BeautifulSoup) -> list[dict]:
-    """Extract all non-mailto hyperlinks with non-empty anchor text from a BeautifulSoup tree."""
-    links = []
-    for a in soup.find_all("a", href=True):
-        url = a["href"].strip()
-        if not url or url.startswith("mailto:"):
-            continue
-        anchor_text = a.get_text(strip=True)
-        if anchor_text and not _is_boilerplate_link(url, anchor_text):
-            links.append({"url": url, "anchor_text": anchor_text})
-    return links
 
 
 def _strip_noise(soup: BeautifulSoup) -> None:
@@ -317,25 +373,18 @@ def parse_emails(raw_messages: list[bytes]) -> list[ParsedEmail]:
         # Body extraction
         plain_text, html_text = _get_body_parts(msg)
 
-        links: list[dict] = []
         sections: list[dict] = []
 
         if plain_text is not None:
             body = plain_text
-            # Still extract links and sections from HTML part if present alongside plain text
+            # Extract sections from HTML part if present alongside plain text
             if html_text is not None:
-                try:
-                    html_soup = BeautifulSoup(html_text, "lxml")
-                    links = _extract_links(html_soup)
-                except Exception:
-                    pass
                 try:
                     sections = _extract_sections(html_text)
                 except Exception:
                     sections = []
         elif html_text is not None:
             soup = BeautifulSoup(html_text, "lxml")
-            links = _extract_links(soup)   # extract BEFORE stripping (kept for fallback)
             _strip_noise(soup)
             body = _html_to_text(str(soup))
             try:
@@ -363,7 +412,7 @@ def parse_emails(raw_messages: list[bytes]) -> list[ParsedEmail]:
                 sender=sender,
                 date=date_parsed,
                 body=body,
-                links=links,
+                links=[],    # links are section-local; see sections field
                 sections=sections,
             )
         )
