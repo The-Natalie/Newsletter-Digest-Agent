@@ -65,12 +65,28 @@ _BOILERPLATE_ANCHORS = frozenset({
 })
 
 
+# Substring patterns for anchor text that can't be enumerated exactly.
+# Checked with `in` against lowercased anchor text. Keep entries specific enough
+# to avoid false positives — each should unambiguously indicate a footer/admin link.
+_BOILERPLATE_ANCHOR_SUBSTRINGS = (
+    "your preferences",
+    "your subscription",
+    "your email preferences",
+    "manage your email",
+    "manage your subscriptions",
+)
+
 _SECTION_SPLIT_PATTERN = re.compile(r'\n{2,}|^\s*[-*_]{3,}\s*$', re.MULTILINE)
 _MIN_SECTION_CHARS = 50
 _MD_LINK_RE = re.compile(r'\[([^\]]+)\]\((https?://[^\)]+)\)')
 
 # Substrings that identify sponsor or shell segments — checked against lowercase text.
+# All entries are multi-word phrases to avoid false positives on real story text that
+# incidentally contains a single boilerplate word (e.g. a story that mentions "unsubscribe"
+# as part of a longer sentence is not filtered; a footer that says
+# "manage your subscriptions" is).
 _BOILERPLATE_SEGMENT_SIGNALS = (
+    # Sponsorship / advertising
     "sponsored by",
     "brought to you by",
     "presented by",
@@ -80,6 +96,36 @@ _BOILERPLATE_SEGMENT_SIGNALS = (
     "a word from our sponsor",
     "advertisement",
     "advertorial",
+    "advertise to",
+    "to advertise with",
+    "reach our audience",
+    "want to reach our",
+    "advertising opportunities",
+    "advertiser reach",
+    # Subscription management / footer
+    "manage your subscriptions",
+    "manage your email",
+    "update your email preferences",
+    "email preferences or unsubscribe",
+    "don't unsubscribe",
+    "free subscriber to",
+    "currently a free subscriber",
+    "support this newsletter",
+    "all rights reserved",
+    # Podcast / media availability
+    "available as a podcast",
+    "available on podcast",
+    "podcast episode",
+    "listen to the full episode",
+    "listen to this week",
+    "with you on the go",
+    # Referral / promotional
+    "referral link",
+    "free swag",
+    # Generic newsletter meta
+    "forward this email",
+    "share this newsletter",
+    "recommend this newsletter",
 )
 
 
@@ -90,6 +136,8 @@ def _is_boilerplate_link(url: str, anchor_text: str) -> bool:
     if any(fragment in url_lower for fragment in _BOILERPLATE_URL_FRAGMENTS):
         return True
     if anchor_lower in _BOILERPLATE_ANCHORS:
+        return True
+    if any(sub in anchor_lower for sub in _BOILERPLATE_ANCHOR_SUBSTRINGS):
         return True
     return False
 
