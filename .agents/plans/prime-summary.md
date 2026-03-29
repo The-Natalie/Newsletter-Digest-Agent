@@ -21,8 +21,11 @@
 **Pattern:** Linear synchronous pipeline. One HTTP request triggers the full pipeline and returns the completed digest.
 
 ```
-IMAP → Ingestion → Extraction → Dedup → AI Generation → SQLite → HTTP Response → Frontend
+IMAP → Ingestion → Extraction → Dedup → AI Review → AI Generation → SQLite → HTTP Response → Frontend
 ```
+
+- **AI Review** is a pre-generation KEEP/DROP classifier (`ai/story_reviewer.py`). It uses Claude haiku to filter non-story groups (admin content, housekeeping, ambiguous sections) that deterministic rules did not catch. Runs after clustering, before generation.
+- **AI Generation** receives only story groups that passed review. In MVP, a 50-group cap is applied in `digest_builder.py` immediately before this stage. This cap is a temporary constraint, not a permanent design decision.
 
 - No background tasks, no SSE, no task queues in MVP.
 - Frontend shows a loading state while the synchronous request is in flight.
@@ -60,6 +63,7 @@ newsletter-digest/
 │   ├── deduplicator.py      # clusters → merged story groups
 │   └── digest_builder.py    # pipeline orchestrator (main entry point)
 ├── ai/
+│   ├── story_reviewer.py    # Pre-generation KEEP/DROP classifier (haiku, tool-use)
 │   └── claude_client.py     # Anthropic SDK, prompts, tool-use schema
 ├── api/
 │   ├── digests.py           # POST /api/digests/generate, GET /api/digests/latest
@@ -83,16 +87,17 @@ newsletter-digest/
 - **Within-run dedup only:** Embeddings are in-memory per run, discarded after. No DB persistence of embeddings.
 - **Single active digest:** DB stores only the most recently completed digest.
 - **Read-only IMAP:** Always `readonly=True` + `BODY.PEEK[]`. Never modify mailbox state.
-- **Batch to one API call:** All story clusters go to Claude in a single call to minimize cost.
+- **Hybrid filtering:** Deterministic rules (extraction filters, signal matching, semantic clustering) do the heavy lifting. The AI review step handles edge cases the rules cannot catch reliably.
+- **Batch to one API call:** All reviewed story groups go to Claude in a single generation call to minimize cost. In MVP, a 50-group cap is applied in `digest_builder.py` before this call. Phase 2 removes the cap and replaces it with batched calls (15–25 groups each).
 - **Claude tool use:** Structured output via function calling, not prompt-level JSON.
 
 ---
 
 ## MVP Scope Boundary
 
-**In:** Manual on-demand generation · Single folder per run · Within-run dedup · Browser display · PDF download · Simple loading state
+**In:** Manual on-demand generation · Single folder per run · Within-run dedup · Hybrid pipeline (deterministic rules + AI review) · Browser display · PDF download · Simple loading state · MVP 50-group cap (temporary, applied after AI review)
 
-**Out (Phase 2):** SSE progress streaming · Scheduling · Email delivery · Cross-run dedup · Multiple folders per run · Multi-user · OAuth2 · Digest history
+**Out (Phase 2):** SSE progress streaming · Scheduling · Email delivery · Cross-run dedup · Multiple folders per run · Multi-user · OAuth2 · Digest history · Batched generation (replaces MVP cap)
 
 ---
 
@@ -114,7 +119,7 @@ newsletter-digest/
 ```
 IMAP_HOST, IMAP_PORT, IMAP_USERNAME, IMAP_PASSWORD
 ANTHROPIC_API_KEY, CLAUDE_MODEL (claude-haiku-4-5)
-MAX_EMAILS_PER_RUN (50), DEDUP_THRESHOLD (0.82)
+MAX_EMAILS_PER_RUN (50), DEDUP_THRESHOLD (0.78)
 DATABASE_URL, HOST, PORT
 ```
 
@@ -146,8 +151,8 @@ No story embeddings stored. No processed email tracking. Cross-run state deferre
 
 | Phase | Goal | Status |
 |---|---|---|
-| 1 | Core pipeline as CLI script — `digest_builder.py` runnable end-to-end | **Next** |
-| 2 | Wrap pipeline in FastAPI — `POST /api/digests/generate` returns digest JSON | Pending |
+| 1 | Core pipeline as CLI script — `digest_builder.py` runnable end-to-end; includes hybrid AI review step and MVP 50-group cap | **Next** |
+| 2 | Wrap pipeline in FastAPI — `POST /api/digests/generate` returns digest JSON; remove 50-group cap and add batched generation (15–25 groups per call) | Pending |
 | 3 | Frontend + PDF export — browser UI, Pico.css, marked.js, weasyprint | Pending |
 | 4 | Polish + deployment — error states, empty states, README, Dockerfile | Pending |
 

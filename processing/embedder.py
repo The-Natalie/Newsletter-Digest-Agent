@@ -18,6 +18,44 @@ _MAX_ENCODING_CHARS = 400   # max chars fed to the encoder per chunk
 
 _SPLIT_PATTERN = re.compile(r'\n{2,}|^\s*[-*_]{3,}\s*$', re.MULTILINE)
 
+# Substrings identifying non-story newsletter sections.
+# These are sections whose content is administrative, editorial meta, or promotional
+# infrastructure — they are not news stories and should not reach the AI prompt.
+# Each phrase is multi-word to reduce false positives.
+# NOT included: sponsor content, product announcements, research, tools, job listings.
+# These are conservative signals: only drop on clear non-story match.
+_NON_STORY_SIGNALS = (
+    # Subscription-receiving meta (onboarding blurbs)
+    "you're receiving this because",
+    "you are receiving this because",
+    # Frequency / notification settings prompts
+    "to change how often you receive",
+    "to update your notification preferences",
+    # Audience growth / ad recruitment copy
+    "want to advertise with us",
+    "interested in advertising with us",
+    "interested in sponsoring this",
+    # Newsletter outro / sign-off boilerplate
+    "that's all for this week",
+    "that's it for this week",
+    "see you next issue",
+    "see you in the next issue",
+    # Feedback / survey prompts
+    "take our survey",
+    "fill out our survey",
+)
+
+
+def _is_non_story_chunk(text: str) -> bool:
+    """Return True if this chunk is non-story newsletter content (meta/admin/editorial).
+
+    Uses substring matching against _NON_STORY_SIGNALS. Only filters on clear,
+    multi-word signals to avoid false positives on legitimate stories.
+    """
+    text_lower = text.lower()
+    return any(signal in text_lower for signal in _NON_STORY_SIGNALS)
+
+
 _model: SentenceTransformer | None = None
 
 
@@ -46,15 +84,24 @@ def _segment_email(parsed_email: ParsedEmail) -> list[StoryChunk]:
     Fallback path: split plain-text body at blank-line/HR boundaries with no links.
     """
     if parsed_email.sections:
-        chunks = [
-            StoryChunk(
+        chunks = []
+        non_story_count = 0
+        for section in parsed_email.sections:
+            if len(section["text"]) < _MIN_CHUNK_CHARS:
+                continue
+            if _is_non_story_chunk(section["text"]):
+                non_story_count += 1
+                continue
+            chunks.append(StoryChunk(
                 text=section["text"],
                 sender=parsed_email.sender,
                 links=section["links"],
+            ))
+        if non_story_count:
+            logger.debug(
+                "Email from %s: dropped %d non-story section(s)",
+                parsed_email.sender, non_story_count,
             )
-            for section in parsed_email.sections
-            if len(section["text"]) >= _MIN_CHUNK_CHARS
-        ]
         logger.debug(
             "Email from %s: used %d pre-extracted sections → %d chunks",
             parsed_email.sender, len(parsed_email.sections), len(chunks),
@@ -64,14 +111,24 @@ def _segment_email(parsed_email: ParsedEmail) -> list[StoryChunk]:
     # Fallback: plain-text email — split body, no links available
     segments = _SPLIT_PATTERN.split(parsed_email.body)
     chunks = []
+    non_story_count = 0
     for seg in segments:
         seg = seg.strip()
-        if len(seg) >= _MIN_CHUNK_CHARS:
-            chunks.append(StoryChunk(
-                text=seg,
-                sender=parsed_email.sender,
-                links=[],
-            ))
+        if len(seg) < _MIN_CHUNK_CHARS:
+            continue
+        if _is_non_story_chunk(seg):
+            non_story_count += 1
+            continue
+        chunks.append(StoryChunk(
+            text=seg,
+            sender=parsed_email.sender,
+            links=[],
+        ))
+    if non_story_count:
+        logger.debug(
+            "Email from %s: dropped %d non-story segment(s) (plain-text fallback)",
+            parsed_email.sender, non_story_count,
+        )
     logger.debug(
         "Email from %s: plain-text fallback → %d chunks",
         parsed_email.sender, len(chunks),

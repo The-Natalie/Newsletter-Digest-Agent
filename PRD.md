@@ -88,6 +88,7 @@ The system connects to any standard IMAP email account. The user routes newslett
 | Multiple user accounts | ❌ Phase 2 | |
 | Runtime configuration via UI | ❌ Phase 2 | Depends on scheduling and delivery features being present |
 | Real-time progress streaming via SSE | ❌ Phase 2 | MVP uses a simple loading state instead |
+| Batched digest generation (multiple Claude calls per run) | ❌ Phase 2 | MVP uses a single call with a 50-group cap; Phase 2 removes the cap and batches in groups of 15–25 |
 | Digest history — browsing past runs | ❌ Future | |
 | Topic-level thematic grouping (beyond story-level dedup) | ❌ Future | |
 | Browser extension or email client plugin | ❌ Future | |
@@ -167,7 +168,10 @@ Email Inbox (IMAP)
  Deduplication Layer     — embed stories, cluster by semantic similarity (within-run)
         │
         ▼
- AI Generation Layer     — Claude API generates one summary per cluster
+ AI Review Layer         — Claude classifies each story group as KEEP or DROP (haiku, pre-generation filter)
+        │
+        ▼
+ AI Generation Layer     — Claude API generates one summary per story group (batched single call, MVP cap: 50)
         │
         ▼
  Storage Layer           — SQLite stores the most recent digest output
@@ -200,6 +204,7 @@ newsletter-digest/
 │
 ├── ai/
 │   ├── __init__.py
+│   ├── story_reviewer.py       # Pre-generation KEEP/DROP classifier (haiku, tool-use schema)
 │   └── claude_client.py        # Anthropic SDK, prompt templates, tool-use schema
 │
 ├── api/
@@ -280,7 +285,7 @@ newsletter-digest/
 **Operations:**
 - Split each email body into story candidates using structural heuristics (blank line boundaries, horizontal rule tags, repeated heading patterns)
 - Encode story titles + first 2–3 sentences using `sentence-transformers` (`all-MiniLM-L6-v2`, 22MB, CPU-compatible)
-- Run `util.community_detection` at cosine similarity threshold 0.82 to form clusters
+- Run `util.community_detection` at cosine similarity threshold 0.78 to form clusters
 - Each cluster → one digest entry; all contributing newsletters and their source links are recorded for that entry
 
 **What "same story" means:** Two stories are merged if they describe the same specific event or announcement (same funding round, same product release, same regulatory ruling). Two different articles about a broad shared theme (e.g., "AI regulation") that address distinct developments remain separate entries.
@@ -289,7 +294,9 @@ newsletter-digest/
 
 ### Feature 4: AI Digest Generation
 
-**Purpose:** Use the Claude API to generate a human-readable digest entry for each deduplicated story cluster.
+**Purpose:** Use the Claude API to generate a human-readable digest entry for each deduplicated story group that has passed the AI review step.
+
+**Architecture note:** The generation pipeline is intentionally hybrid. Deterministic rules (HTML extraction, link filtering, semantic clustering) do the heavy lifting. An AI review step (`story_reviewer.py`) handles ambiguous filtering before generation, removing non-story groups that deterministic rules cannot reliably catch. Only story groups that pass review reach the generation step.
 
 **Model:** `claude-haiku-4-5` (default). Configurable via `CLAUDE_MODEL` in `.env` if the user wants to upgrade to `claude-sonnet-4-6`.
 
@@ -322,7 +329,9 @@ Write a digest entry with:
 }
 ```
 
-**Batching:** All clusters are passed to Claude in a single API call using a multi-cluster prompt structure. This minimizes API calls and cost regardless of how many unique stories the run produces.
+**Batching:** All reviewed story groups are passed to Claude in a single API call using a multi-cluster prompt structure. This minimizes API calls and cost regardless of how many unique stories the run produces.
+
+**MVP cap:** A temporary limit of 50 story groups per generation call is applied in `digest_builder.py` after the AI review step. This constraint exists to stay within output token limits during the MVP phase and is not a permanent design decision — it will be replaced by batched generation in Phase 2.
 
 ---
 
@@ -610,8 +619,9 @@ The MVP is successful when a user can open the web interface, select a newslette
 - ✅ `ingestion/email_parser.py` — MIME parsing, BeautifulSoup pre-processing, html2text conversion, link extraction
 - ✅ `processing/embedder.py` — sentence-transformers encoding (in-memory), community_detection clustering
 - ✅ `processing/deduplicator.py` — cluster → merged story groups with combined source links
+- ✅ `ai/story_reviewer.py` — pre-generation KEEP/DROP classifier; Claude haiku call; filters non-story groups before generation
 - ✅ `ai/claude_client.py` — Anthropic SDK async client, batched multi-cluster prompt, tool-use schema
-- ✅ `processing/digest_builder.py` — pipeline function; runs all stages end-to-end and returns completed digest JSON
+- ✅ `processing/digest_builder.py` — pipeline function; runs all stages end-to-end (ingestion → extraction → cluster → review → generate → store) and returns completed digest JSON
 - ✅ CLI entry point: `python -m processing.digest_builder --folder "AI Newsletters" --start 2026-03-10 --end 2026-03-17`
 
 **Validation:** Run against a real newsletter folder with at least two overlapping newsletters. Confirm at least one merged story entry. Confirm the full digest JSON is printed and written to the database.
@@ -671,6 +681,7 @@ The MVP is successful when a user can open the web interface, select a newslette
 ### Phase 2 Additions (Planned)
 
 - **Real-time progress streaming** — Server-Sent Events (SSE) replacing the simple loading state; the frontend receives step-by-step pipeline updates as the digest generates
+- **Batched digest generation** — Remove the MVP 50-group cap and replace it with batched generation (15–25 story groups per Claude call); results are aggregated into a single digest response. The AI review step runs before batching so only valid story groups are batched.
 - **Scheduled digest generation** — APScheduler with a configurable cron expression; runs the pipeline automatically and saves the result
 - **Email delivery** — SMTP digest delivery (HTML + plain text fallback); user chooses "in browser," "email only," or "both"
 - **Runtime configuration via UI** — settings panel for schedule interval and delivery preferences; depends on scheduling and delivery features being present
@@ -715,7 +726,7 @@ The MVP is successful when a user can open the web interface, select a newslette
 ### Risk 4: Deduplication False Positives
 **Risk:** The 0.82 cosine similarity threshold may merge stories that are actually distinct — two different funding rounds in the same sector, for example.
 
-**Mitigation:** Make the threshold configurable in `.env` (`DEDUP_THRESHOLD=0.82`). Log cluster sizes in the pipeline output — clusters with more than 5 members are logged as warnings for manual inspection. Phase 4 includes threshold tuning based on real results from the user's actual newsletters.
+**Mitigation:** Make the threshold configurable in `.env` (`DEDUP_THRESHOLD=0.78`). Log cluster sizes in the pipeline output — clusters with more than 5 members are logged as warnings for manual inspection. Phase 4 includes threshold tuning based on real results from the user's actual newsletters.
 
 ---
 
@@ -775,5 +786,5 @@ Cross-run dedup, story embeddings, and processed email tracking are deferred to 
 | 3 | Batching all clusters into a single Claude API call stays within the model's context window for typical runs (2–10 emails) | High | Verify at Phase 1; add chunking if context limit is hit |
 | 4 | The user's newsletter folders contain only newsletters (email rules route them reliably) | High | User confirmed |
 | 5 | Blank-line and horizontal-rule heuristics are sufficient for story segmentation within typical newsletter emails | Medium | Test against real newsletters in Phase 1; refine if needed |
-| 6 | Dedup threshold of 0.82 is appropriate for the user's newsletter mix | Medium | Tune in Phase 4 based on actual results |
+| 6 | Dedup threshold of 0.78 is appropriate for the user's newsletter mix | Medium | Tune in Phase 4 based on actual results |
 | 7 | weasyprint can be installed cleanly on the target deployment environment | Medium | Validate during Phase 3 Dockerfile build; fall back to reportlab if not |
