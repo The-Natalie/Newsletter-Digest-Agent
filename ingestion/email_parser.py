@@ -79,7 +79,9 @@ _BOILERPLATE_ANCHOR_SUBSTRINGS = (
 
 _SECTION_SPLIT_PATTERN = re.compile(r'\n{2,}|^\s*[-*_]{3,}\s*$', re.MULTILINE)
 _MIN_SECTION_CHARS = 100
+_MIN_LIST_ITEM_CHARS = 30   # lower threshold for individual bullet items (job listings etc.)
 _MD_LINK_RE = re.compile(r'\[([^\]]+)\]\((https?://[^\)]+)\)')
+_LIST_ITEM_START = re.compile(r'^\s*[\*\-]\s+', re.MULTILINE)
 
 # Tracking/analytics query parameters stripped during URL normalization.
 # utm_* prefix is handled separately (prefix match). Entries here are exact param names.
@@ -234,6 +236,53 @@ def _is_heading_only(text: str) -> bool:
     return all(l.startswith('#') for l in lines)
 
 
+def _split_list_section(sec: str) -> list[dict] | None:
+    """Split a bullet-list section into per-item sub-sections with local links.
+
+    Returns a list of per-item dicts (each with "text" and "links") when the section
+    contains 2+ list items that each have their own distinct non-boilerplate link.
+    Returns None otherwise — caller processes the section as a single unit.
+
+    This prevents aggregator sections (quick links, product updates, job listings)
+    from creating one chunk that carries links from multiple unrelated items. Each
+    item becomes its own section so the correct link is always associated with the
+    correct story text.
+
+    Single-story sections — including sponsor articles with multiple links to the
+    same destination — are unaffected because their items either share a URL or
+    fewer than 2 items have their own link.
+    """
+    item_matches = list(_LIST_ITEM_START.finditer(sec))
+    if len(item_matches) < 2:
+        return None
+
+    # Slice raw markdown for each item (from bullet marker end to next bullet start)
+    items_raw: list[str] = []
+    for idx, match in enumerate(item_matches):
+        start = match.end()
+        end = item_matches[idx + 1].start() if idx + 1 < len(item_matches) else len(sec)
+        items_raw.append(sec[start:end].strip())
+
+    # Build per-item dicts; only items with their own non-boilerplate link are kept
+    result: list[dict] = []
+    for raw in items_raw:
+        best_by_norm: dict[str, dict] = {}
+        for anchor, url in _MD_LINK_RE.findall(raw):
+            if _is_boilerplate_url(url):
+                continue
+            norm = _normalize_url(url)
+            if norm not in best_by_norm:
+                best_by_norm[norm] = {"url": norm, "anchor_text": anchor}
+            elif len(anchor) > len(best_by_norm[norm]["anchor_text"]):
+                best_by_norm[norm]["anchor_text"] = anchor
+        links = list(best_by_norm.values())
+        clean_text = _MD_LINK_RE.sub(r'\1', raw).strip()
+        if links and len(clean_text) >= _MIN_LIST_ITEM_CHARS:
+            result.append({"text": clean_text, "links": links})
+
+    return result if len(result) >= 2 else None
+
+
 def _extract_sections(html_text: str) -> list[dict]:
     """Convert HTML to per-section dicts with clean prose text and local links.
 
@@ -272,6 +321,17 @@ def _extract_sections(html_text: str) -> list[dict]:
     for sec in merged:
         sec = sec.strip()
         if not sec:
+            continue
+
+        # Bullet-list aggregator detection: if the section contains 2+ list items
+        # that each carry their own distinct link (product updates, job listings,
+        # quick-links roundups), split into per-item sub-sections so each item's
+        # link stays with only that item's text.
+        list_items = _split_list_section(sec)
+        if list_items is not None:
+            for item in list_items:
+                if not _is_boilerplate_segment(item["text"]):
+                    sections.append(item)
             continue
 
         # Extract links from inline markdown syntax.

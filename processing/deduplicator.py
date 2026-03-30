@@ -8,6 +8,43 @@ from processing.embedder import StoryChunk
 
 logger = logging.getLogger(__name__)
 
+# Anchor text substrings that indicate a CTA/boilerplate link rather than a story link.
+# Matched case-insensitively. Used to prefer genuine story links within a single chunk.
+_CTA_ANCHOR_SIGNALS: tuple[str, ...] = (
+    "try a demo",
+    "try demo",
+    "request a demo",
+    "book a demo",
+    "get a demo",
+    "watch our",
+    "watch the",
+    "register free",
+    "register now",
+    "sign up free",
+    "sign up now",
+    "learn more",
+    "read more",
+    "find out more",
+    "click here",
+    "share your thoughts",
+    "terms of service",
+    "privacy policy",
+    "unsubscribe",
+    "manage preferences",
+    "advertise with us",
+    "sponsor",
+)
+
+
+def _is_cta_link(source: dict) -> bool:
+    """Return True if anchor text matches a known CTA/boilerplate signal.
+
+    Only applies to anchor-text signals. Does not filter by URL pattern, so
+    legitimate sponsor articles (which have descriptive anchors) are not dropped.
+    """
+    anchor = source.get("anchor_text", "").lower()
+    return any(signal in anchor for signal in _CTA_ANCHOR_SIGNALS)
+
 
 @dataclass
 class StoryGroup:
@@ -39,35 +76,42 @@ def _score_source(source: dict) -> tuple[int, int]:
 
 
 def _build_sources(cluster: list[StoryChunk]) -> list[dict]:
-    """Collect all source links from a cluster and return the single best one.
+    """Collect sources from a cluster, one per chunk using that chunk's own best link.
 
-    Candidates are deduplicated by URL (since Loop 2 already normalises URLs,
-    exact-match dedup here is sufficient). The best candidate is selected by
-    _score_source(): prefer deeper URL paths (article-specific > homepage),
-    then longer anchor text (more descriptive > generic).
+    For each chunk in the cluster, independently selects the best link from that chunk's
+    own links using _score_source(). This preserves the chunk-to-link relationship:
+    a sponsor chunk's link is never attributed to a story chunk, and vice versa.
 
-    Returns a single-element list to preserve the list[dict] return type and
-    downstream API shape. Returns [] if no valid links exist (sourceless cluster).
+    Sources are deduplicated by URL across chunks (a URL appearing in two chunks is
+    included only once, attributed to the first chunk that contributes it).
+
+    Returns a list with one entry per unique-URL contributing chunk. Returns [] if no
+    chunk has any valid links (sourceless cluster, dropped by deduplicate()).
     """
-    candidates: list[dict] = []
+    sources: list[dict] = []
     seen_urls: set[str] = set()
 
     for chunk in cluster:
-        for link in chunk.links:
-            url = link.get("url", "")
-            if url and url not in seen_urls:
-                seen_urls.add(url)
-                candidates.append({
-                    "newsletter": chunk.sender,
-                    "url": url,
-                    "anchor_text": link.get("anchor_text", ""),
-                })
+        if not chunk.links:
+            continue
+        # Prefer non-CTA links within this chunk; fall back to all links if every one is a CTA
+        candidate_links = [l for l in chunk.links if not _is_cta_link({"anchor_text": l.get("anchor_text", "")})]
+        if not candidate_links:
+            candidate_links = chunk.links
+        best_link = max(
+            candidate_links,
+            key=lambda l: _score_source({"url": l.get("url", ""), "anchor_text": l.get("anchor_text", "")}),
+        )
+        url = best_link.get("url", "")
+        if url and url not in seen_urls:
+            seen_urls.add(url)
+            sources.append({
+                "newsletter": chunk.sender,
+                "url": url,
+                "anchor_text": best_link.get("anchor_text", ""),
+            })
 
-    if not candidates:
-        return []
-
-    best = max(candidates, key=_score_source)
-    return [best]
+    return sources
 
 
 def deduplicate(clusters: list[list[StoryChunk]]) -> list[StoryGroup]:

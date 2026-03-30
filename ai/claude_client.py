@@ -12,8 +12,8 @@ logger = logging.getLogger(__name__)
 
 _TOOL_NAME = "create_digest_entries"
 _MAX_TOKENS = 8192
+_BATCH_SIZE = 15   # ~390 tokens/entry x 15 = ~5 850 tokens; leaves headroom for verbose entries
 _MAX_CHUNK_CHARS = 600
-_MAX_STORY_GROUPS = 50   # max groups per Claude call; keeps output within _MAX_TOKENS
 
 _TOOL_SCHEMA: dict = {
     "name": _TOOL_NAME,
@@ -104,7 +104,12 @@ def _build_user_message(story_groups: list[StoryGroup], folder: str) -> str:
 
 
 async def generate_digest(story_groups: list[StoryGroup], folder: str) -> list[dict]:
-    """Call Claude to generate digest entries for all story groups in one API call.
+    """Call Claude to generate digest entries, batching to respect the output token ceiling.
+
+    Splits story_groups into slices of _BATCH_SIZE and calls the Claude API once per
+    slice. Results are appended to the output list in the same order as the input —
+    batch 1 entries first, then batch 2, etc. — so the final list is identical in order
+    and structure to what a single-call implementation would return.
 
     Args:
         story_groups: List of StoryGroup objects from deduplicate().
@@ -116,85 +121,162 @@ async def generate_digest(story_groups: list[StoryGroup], folder: str) -> list[d
         Returns [] if story_groups is empty.
 
     Raises:
-        anthropic.APIError: On any Anthropic API failure. Let callers handle retries.
+        anthropic.APIError: On any Anthropic API failure. Propagates immediately;
+                            entries from completed batches are discarded.
     """
     if not story_groups:
         return []
 
-    # Sort by source count descending (most cross-covered stories first), then cap.
-    # This prioritises multi-newsletter coverage and keeps output within _MAX_TOKENS.
-    if len(story_groups) > _MAX_STORY_GROUPS:
-        total_available = len(story_groups)
-        story_groups = sorted(story_groups, key=lambda g: len(g.sources), reverse=True)
-        story_groups = story_groups[:_MAX_STORY_GROUPS]
-        logger.info(
-            "Capped story groups to top %d by source count (%d total available)",
-            _MAX_STORY_GROUPS,
-            total_available,
-        )
-
     client = _get_client()
-    user_message = _build_user_message(story_groups, folder)
+    batches = [story_groups[i:i + _BATCH_SIZE] for i in range(0, len(story_groups), _BATCH_SIZE)]
 
     logger.info(
-        "Calling Claude (%s) with %d story group(s) for folder '%s'",
+        "Calling Claude (%s) with %d story group(s) in %d batch(es) for folder '%s'",
         settings.claude_model,
         len(story_groups),
+        len(batches),
         folder,
     )
 
-    try:
-        response = await client.messages.create(
-            model=settings.claude_model,
-            max_tokens=_MAX_TOKENS,
-            system=_system_prompt(folder),
-            messages=[{"role": "user", "content": user_message}],
-            tools=[_TOOL_SCHEMA],
-            tool_choice={"type": "tool", "name": _TOOL_NAME},
-        )
-    except anthropic.APIError as exc:
-        logger.error("Claude API error: %s", exc)
-        raise
-
-    logger.debug(
-        "Claude response: stop_reason=%r  input_tokens=%d  output_tokens=%d",
-        response.stop_reason,
-        response.usage.input_tokens,
-        response.usage.output_tokens,
-    )
-
-    # Extract tool input from the response
-    tool_input: dict | None = None
-    for block in response.content:
-        if block.type == "tool_use":
-            tool_input = block.input
-            break
-
-    if tool_input is None:
-        raise ValueError(
-            f"Claude response contained no tool_use block. "
-            f"stop_reason={response.stop_reason!r}"
-        )
-
-    raw_entries: list[dict] = tool_input.get("entries", [])
-    logger.info("Claude returned %d digest entry/entries", len(raw_entries))
-
-    if len(raw_entries) != len(story_groups):
-        logger.warning(
-            "Entry count mismatch: Claude returned %d entries for %d story groups — "
-            "truncating/padding to match",
-            len(raw_entries),
-            len(story_groups),
-        )
-
-    # Merge Claude's text fields with pre-built source attribution from deduplicator
     result: list[dict] = []
-    for entry, group in zip(raw_entries, story_groups):
-        result.append({
-            "headline": entry.get("headline", ""),
-            "summary": entry.get("summary", ""),
-            "significance": entry.get("significance", ""),
-            "sources": group.sources,
-        })
 
+    for batch_num, batch in enumerate(batches, 1):
+        user_message = _build_user_message(batch, folder)
+
+        logger.info(
+            "Batch %d/%d — generating %d entries",
+            batch_num,
+            len(batches),
+            len(batch),
+        )
+
+        try:
+            response = await client.messages.create(
+                model=settings.claude_model,
+                max_tokens=_MAX_TOKENS,
+                system=_system_prompt(folder),
+                messages=[{"role": "user", "content": user_message}],
+                tools=[_TOOL_SCHEMA],
+                tool_choice={"type": "tool", "name": _TOOL_NAME},
+            )
+        except anthropic.APIError as exc:
+            logger.error("Claude API error on batch %d/%d: %s", batch_num, len(batches), exc)
+            raise
+
+        logger.debug(
+            "Batch %d/%d response: stop_reason=%r  input_tokens=%d  output_tokens=%d",
+            batch_num,
+            len(batches),
+            response.stop_reason,
+            response.usage.input_tokens,
+            response.usage.output_tokens,
+        )
+
+        # Detect output truncation: retry by splitting the batch in half (one level only).
+        # ceil-split ensures no entry is silently omitted for odd-sized batches.
+        if response.stop_reason == "max_tokens":
+            logger.warning(
+                "Batch %d/%d truncated (stop_reason='max_tokens', %d entries requested) — "
+                "retrying as two half-batches",
+                batch_num,
+                len(batches),
+                len(batch),
+            )
+            split = len(batch) // 2 + len(batch) % 2  # ceiling half goes to half_a
+            for half_num, half in enumerate([batch[:split], batch[split:]], 1):
+                if not half:
+                    continue
+                half_message = _build_user_message(half, folder)
+                try:
+                    half_response = await client.messages.create(
+                        model=settings.claude_model,
+                        max_tokens=_MAX_TOKENS,
+                        system=_system_prompt(folder),
+                        messages=[{"role": "user", "content": half_message}],
+                        tools=[_TOOL_SCHEMA],
+                        tool_choice={"type": "tool", "name": _TOOL_NAME},
+                    )
+                except anthropic.APIError as exc:
+                    logger.error(
+                        "Claude API error on batch %d/%d retry-half %d: %s",
+                        batch_num, len(batches), half_num, exc,
+                    )
+                    raise
+                if half_response.stop_reason == "max_tokens":
+                    logger.warning(
+                        "Batch %d/%d retry-half %d also truncated — proceeding with partial output",
+                        batch_num, len(batches), half_num,
+                    )
+                half_tool_input: dict | None = None
+                for block in half_response.content:
+                    if block.type == "tool_use":
+                        half_tool_input = block.input
+                        break
+                if half_tool_input is None:
+                    logger.warning(
+                        "Batch %d/%d retry-half %d: no tool_use block — skipping half",
+                        batch_num, len(batches), half_num,
+                    )
+                    continue
+                half_entries: list[dict] = half_tool_input.get("entries", [])
+                if len(half_entries) != len(half):
+                    logger.warning(
+                        "Batch %d/%d retry-half %d entry count mismatch: "
+                        "Claude returned %d entries for %d story groups",
+                        batch_num, len(batches), half_num, len(half_entries), len(half),
+                    )
+                for entry, group in zip(half_entries, half):
+                    result.append({
+                        "headline": entry.get("headline", ""),
+                        "summary": entry.get("summary", ""),
+                        "significance": entry.get("significance", ""),
+                        "sources": group.sources,
+                    })
+            continue
+
+        # Extract tool input from the response
+        tool_input: dict | None = None
+        for block in response.content:
+            if block.type == "tool_use":
+                tool_input = block.input
+                break
+
+        if tool_input is None:
+            raise ValueError(
+                f"Claude response contained no tool_use block on batch {batch_num}/{len(batches)}. "
+                f"stop_reason={response.stop_reason!r}"
+            )
+
+        raw_entries: list[dict] = tool_input.get("entries", [])
+        logger.info(
+            "Batch %d/%d — Claude returned %d entries",
+            batch_num,
+            len(batches),
+            len(raw_entries),
+        )
+
+        if len(raw_entries) != len(batch):
+            logger.warning(
+                "Batch %d/%d entry count mismatch: Claude returned %d entries for %d story groups"
+                " — truncating/padding to match",
+                batch_num,
+                len(batches),
+                len(raw_entries),
+                len(batch),
+            )
+
+        # Merge Claude's text fields with pre-built source attribution from deduplicator
+        for entry, group in zip(raw_entries, batch):
+            result.append({
+                "headline": entry.get("headline", ""),
+                "summary": entry.get("summary", ""),
+                "significance": entry.get("significance", ""),
+                "sources": group.sources,
+            })
+
+    logger.info(
+        "Stage 6/6 — Generated %d total digest entry/entries across %d batch(es)",
+        len(result),
+        len(batches),
+    )
     return result

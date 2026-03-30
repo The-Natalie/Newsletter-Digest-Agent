@@ -110,7 +110,7 @@ The frontend POSTs a request, shows a loading state, and renders the digest when
 
 ### Deduplication
 - Within-run only. Embeddings are computed in memory and discarded after the run.
-- Threshold: `0.82` cosine similarity (configurable via `DEDUP_THRESHOLD` in `.env`).
+- Threshold: `0.78` cosine similarity (configurable via `DEDUP_THRESHOLD` in `.env`).
 - Model: `all-MiniLM-L6-v2` (22MB, CPU-compatible).
 
 ### AI Generation
@@ -150,7 +150,7 @@ CLAUDE_MODEL=claude-haiku-4-5
 
 DATABASE_URL=sqlite+aiosqlite:///./data/digest.db
 MAX_EMAILS_PER_RUN=50
-DEDUP_THRESHOLD=0.82
+DEDUP_THRESHOLD=0.78
 HOST=0.0.0.0
 PORT=8000
 ```
