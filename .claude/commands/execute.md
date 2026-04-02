@@ -106,3 +106,19 @@ Provide summary:
 - If you need to deviate from the plan, explain why
 - If tests fail, fix implementation until they pass
 - Don't skip validation steps
+
+
+## Execution Log Capture
+
+During execution, do not rely on terminal output alone.
+
+In addition to the normal Output Report, write your full intended terminal output to a file in `execute-output/`.
+File naming: `<timestamp>-<plan-name>.md`
+
+Do not summarize the output. Do not shorten it. Do not omit anything.
+
+The file should contain the same execution output you would otherwise print to the terminal in full.
+
+In the terminal, only print:
+- the path to the saved file
+- a brief status summary

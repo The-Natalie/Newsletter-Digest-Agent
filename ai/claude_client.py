@@ -14,6 +14,7 @@ _TOOL_NAME = "create_digest_entries"
 _MAX_TOKENS = 8192
 _BATCH_SIZE = 15   # ~390 tokens/entry x 15 = ~5 850 tokens; leaves headroom for verbose entries
 _MAX_CHUNK_CHARS = 600
+_SPARSE_CHUNK_THRESHOLD = 150  # total chars across a story group's chunks; below = sparse
 
 _TOOL_SCHEMA: dict = {
     "name": _TOOL_NAME,
@@ -37,8 +38,9 @@ _TOOL_SCHEMA: dict = {
                         "summary": {
                             "type": "string",
                             "description": (
-                                "2–4 sentences capturing the most complete picture "
-                                "across all source versions. Prioritize clarity."
+                                "1–4 sentences capturing the most complete picture "
+                                "across all source versions. For very short items, "
+                                "one sentence is acceptable. Prioritize clarity."
                             ),
                         },
                         "significance": {
@@ -93,6 +95,14 @@ def _build_user_message(story_groups: list[StoryGroup], folder: str) -> str:
             lines.append(f'<source newsletter="{chunk.sender}">')
             lines.append(excerpt)
             lines.append("</source>")
+        total_chars = sum(len(chunk.text[:_MAX_CHUNK_CHARS]) for chunk in group.chunks)
+        if total_chars < _SPARSE_CHUNK_THRESHOLD:
+            lines.append(
+                "<note>Short item: only limited source text is available above. "
+                "Write the best minimal entry you can from the text provided. "
+                "A single-sentence summary is acceptable for short items. "
+                "Do not return UNKNOWN or leave fields empty.</note>"
+            )
         lines.append("")
 
     lines.append(

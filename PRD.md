@@ -1,33 +1,35 @@
 # Product Requirements Document
 # Newsletter Digest Agent
 
-**Version:** 1.1
-**Date:** 2026-03-17
-**Status:** Draft — Scope Confirmed
+**Version:** 2.0
+**Date:** 2026-04-01
+**Status:** Draft — Architecture Revised
 
 ---
 
 ## 1. Executive Summary
 
-Newsletter Digest Agent is a personal productivity tool that reads newsletters from a user-designated email folder, removes redundant stories that appear across multiple sources, and produces a single consolidated digest. Instead of reading several newsletters that repeat the same announcements, the user reviews one concise summary that preserves links, surfaces unique insights, and groups overlapping stories into a single entry.
+Newsletter Digest Agent is a personal productivity tool that reads newsletters from a user-designated email folder, removes redundant stories that appear across multiple sources, and surfaces a single deduplicated list of story items. Instead of reading several newsletters that repeat the same announcements, the user reviews one consolidated list with unique stories only — preserving the original story text, links, and source attribution, sorted from oldest to newest.
 
-The system connects to any standard IMAP email account. The user routes newsletter subscriptions into dedicated folders using their email client's built-in rules — one folder per topic area. In the app, they select which folder to read from (presented as a category label), optionally set a date range, and trigger generation. The tool reads that folder, extracts story content, detects near-duplicate coverage across sources, and generates a digest through the Claude AI API. The result is displayed in the UI and can be downloaded as a PDF.
+The system connects to any standard IMAP email account. The user routes newsletter subscriptions into dedicated folders using their email client's built-in rules — one folder per topic area. In the app, they select which folder to read from, optionally set a date range, and trigger generation. The tool reads that folder, extracts story items, groups near-duplicate coverage across sources into clusters, and surfaces one representative item per story cluster. The result is displayed in the UI and can be downloaded as a PDF.
 
-**MVP Goal:** Deliver a deployable web tool — a FastAPI backend paired with a standalone vanilla HTML/CSS/JS frontend — that a single user can configure once and use to generate on-demand digests from any of their newsletter folders. The tool should be lightweight, cost-efficient with the Claude API, and suitable for inclusion in a portfolio as a standalone page.
+**MVP Goal:** Deliver a deployable web tool — a FastAPI backend paired with a standalone vanilla HTML/CSS/JS frontend — that a single user can configure once and use to generate on-demand story lists from any of their newsletter folders. The tool should be lightweight, cost-efficient, and suitable for inclusion in a portfolio as a standalone page.
 
 ---
 
 ## 2. Mission
 
-**Mission Statement:** Reduce the time it takes to stay informed by turning a stack of overlapping newsletters into a single, signal-rich digest.
+**Mission Statement:** Reduce the time it takes to stay informed by turning a stack of overlapping newsletters into a single, signal-rich list of unique stories.
 
 ### Core Principles
 
-1. **Signal over volume.** One well-structured entry per story is more valuable than five slightly different versions of the same announcement.
-2. **Folder selection is open-ended.** The user specifies which IMAP folder to read at runtime. Preset shortcuts in the UI are a convenience, not a constraint — any folder name the user types is valid.
-3. **Links are preserved.** The digest surfaces sources. If three newsletters covered the same story, all three source links appear on the merged entry.
-4. **Cost-aware AI usage.** Given the low daily volume (2–10 emails), the system should prefer cost-efficient model choices and avoid unnecessary API calls.
-5. **Portable and customizable.** The frontend uses standard web technologies so the user can adjust layout, styling, and behavior without a build toolchain.
+1. **Signal over volume.** One well-sourced story item is more valuable than five slightly different versions of the same announcement.
+2. **Extracted, not generated.** Story text is preserved as extracted from the original source — the tool selects and surfaces, it does not rewrite or summarize.
+3. **Folder selection is open-ended.** The user specifies which IMAP folder to read at runtime. Preset shortcuts in the UI are a convenience, not a constraint — any folder name the user types is valid.
+4. **Short items are preserved.** Legitimate one-sentence stories and roundup items are valid story records. No length filter removes them.
+5. **Links and attribution are preserved.** Each story item includes its source newsletter name and link.
+6. **Cost-aware AI usage.** The Claude API is used only for a lightweight binary filter pass — not for generation.
+7. **Portable and customizable.** The frontend uses standard web technologies so the user can adjust layout, styling, and behavior without a build toolchain.
 
 ---
 
@@ -39,7 +41,7 @@ The system connects to any standard IMAP email account. The user routes newslett
 
 **Technical comfort:** Comfortable using a web interface and managing their email inbox — creating folders, setting up filters, and routing newsletter subscriptions. No coding, server administration, or configuration file editing is expected. The tool is pre-configured by the developer before the user ever interacts with it.
 
-**Where the user experience begins:** After the tool is deployed and configured, the user opens a web page. From there, their workflow is entirely within the UI: select a folder, optionally set a date range, and trigger a digest. All email access, API integration, and backend behavior is handled transparently.
+**Where the user experience begins:** After the tool is deployed and configured, the user opens a web page. From there, their workflow is entirely within the UI: select a folder, optionally set a date range, and trigger a digest. All email access, deduplication, and backend behavior is handled transparently.
 
 **Key pain points:**
 - Spending 30–60 minutes reading newsletters where 40–60% of the content is repeated across sources
@@ -63,13 +65,15 @@ The system connects to any standard IMAP email account. The user routes newslett
 |---|---|
 | Read emails from a user-specified IMAP folder | ✅ In Scope |
 | Filter emails by date range | ✅ In Scope |
-| Extract story content from HTML newsletter emails | ✅ In Scope |
-| Detect near-duplicate stories across newsletters (story-level dedup, within current run only) | ✅ In Scope |
-| Merge duplicate stories into one digest entry with all source links | ✅ In Scope |
-| Generate digest via Claude API | ✅ In Scope |
+| Extract story items from HTML newsletter emails | ✅ In Scope |
+| Logic filter to remove boilerplate/housekeeping content (not valid short stories) | ✅ In Scope |
+| Detect near-duplicate stories across newsletters using body-text embeddings (within-run only) | ✅ In Scope |
+| Select one representative story item per cluster | ✅ In Scope |
+| LLM binary keep/drop filter on deduplicated items | ✅ In Scope |
+| Output deduplicated story items sorted by date (oldest first) | ✅ In Scope |
 | Manual on-demand digest generation from the UI | ✅ In Scope |
 | Folder selection via preset shortcut buttons (UI convenience only) and free-text input | ✅ In Scope |
-| Display digest in the UI | ✅ In Scope |
+| Display story list in the UI | ✅ In Scope |
 | Download digest as PDF | ✅ In Scope |
 | Simple loading state during digest generation | ✅ In Scope |
 | Email access via pre-configured IMAP credentials (internal, not user-facing) | ✅ In Scope |
@@ -81,14 +85,13 @@ The system connects to any standard IMAP email account. The user routes newslett
 |---|---|---|
 | Scheduled automatic digest generation | ❌ Phase 2 | |
 | Email delivery of digest | ❌ Phase 2 | |
-| Cross-run deduplication | ❌ Phase 2 | Dedup across previous digest runs using persisted story embeddings; unrelated to multiple folder support |
+| Cross-run deduplication | ❌ Phase 2 | Dedup across previous digest runs using persisted embeddings |
 | Importance / priority ranking of stories | ❌ Phase 2 | |
 | OAuth2 authentication (Gmail, Outlook) | ❌ Phase 2 | Aligned with multi-user support |
 | Multiple folder configurations per run | ❌ Phase 2 | |
 | Multiple user accounts | ❌ Phase 2 | |
-| Runtime configuration via UI | ❌ Phase 2 | Depends on scheduling and delivery features being present |
+| Runtime configuration via UI | ❌ Phase 2 | |
 | Real-time progress streaming via SSE | ❌ Phase 2 | MVP uses a simple loading state instead |
-| Batched digest generation (multiple Claude calls per run) | ❌ Phase 2 | MVP uses a single call with a 50-group cap; Phase 2 removes the cap and batches in groups of 15–25 |
 | Digest history — browsing past runs | ❌ Future | |
 | Topic-level thematic grouping (beyond story-level dedup) | ❌ Future | |
 | Browser extension or email client plugin | ❌ Future | |
@@ -101,9 +104,9 @@ The system connects to any standard IMAP email account. The user routes newslett
 ## 5. User Stories
 
 ### US-01: Manual Digest Generation
-**As a newsletter reader, I want to enter a folder name, optionally set a date range, and click "Generate Digest," so that I get a consolidated summary without opening each newsletter individually.**
+**As a newsletter reader, I want to enter a folder name, optionally set a date range, and click "Generate Digest," so that I get a deduplicated list of unique stories without opening each newsletter individually.**
 
-Example: User opens the app, clicks the "AI" shortcut button (which populates the folder input with `AI Newsletters`), sets the date range to the past 3 days, and clicks Generate. The app fetches 12 newsletter emails from that period, deduplicates them, and returns a digest of 8 merged story entries — each with a headline, 2–4 sentence summary, and source links.
+Example: User opens the app, clicks the "AI" shortcut button (which populates the folder input with `AI Newsletters`), sets the date range to the past 3 days, and clicks Generate. The app fetches 12 newsletter emails from that period, deduplicates them, and returns a list of 18 unique story items — each with its original title, body text, link, date, and source newsletter name — sorted oldest to newest.
 
 ---
 
@@ -115,37 +118,37 @@ Example: User has folders named "AI Newsletters," "Design Weekly," and "Fintech.
 ---
 
 ### US-03: Date Range Selection
-**As a user returning from a few days away, I want to set a specific date range so that I can summarize newsletters from a period I missed.**
+**As a user returning from a few days away, I want to set a specific date range so that I can see stories from a period I missed.**
 
-Example: User was offline March 10–16. They set the date range to March 10–16 and click Generate. The system processes all newsletter emails from that window, deduplicates within that set, and returns a single digest covering the full period.
+Example: User was offline March 10–16. They set the date range to March 10–16 and click Generate. The system processes all newsletter emails from that window, deduplicates within that set, and returns a list of unique stories covering the full period, sorted oldest to newest.
 
 ---
 
 ### US-04: Deduplication Across Sources
-**As a user who subscribes to multiple newsletters on the same topic, I want stories that appear in multiple newsletters to be merged into one entry, so that I don't read the same announcement several times.**
+**As a user who subscribes to multiple newsletters on the same topic, I want stories that appear in multiple newsletters to be surfaced only once, so that I don't read the same announcement several times.**
 
-Example: Four newsletters all mention the same product launch. The digest shows one entry: a combined headline, a 2–4 sentence summary drawn from all four versions, and four source links — one per newsletter.
+Example: Four newsletters all mention the same product launch. The digest shows one item for that story — selected from whichever newsletter provided the most complete version — with its original text, link, date, and source newsletter name.
 
 ---
 
-### US-05: Source Links Preserved
-**As a user who wants to read the full article, I want each digest entry to include the original source links, so that I can click through when something catches my attention.**
+### US-05: Source Links and Attribution Preserved
+**As a user who wants to read the full article, I want each story item to include the original link and source newsletter name, so that I can click through when something catches my attention.**
 
-Example: A merged story entry shows: headline, summary, and three links labeled "TLDR AI," "The Rundown," and "Import AI" — each linking to where that newsletter covered the story.
+Example: A story item shows: the original title, body text excerpt, source newsletter "TLDR AI," publication date, and a link to the story.
 
 ---
 
 ### US-06: Loading Feedback During Generation
 **As a user who triggered a digest, I want a clear loading state while it generates, so that I know the system is working and have not accidentally submitted twice.**
 
-Example: After clicking Generate, the button disables and a loading indicator appears. When the digest is ready, the indicator disappears and the digest renders in place.
+Example: After clicking Generate, the button disables and a loading indicator appears. When the digest is ready, the indicator disappears and the story list renders in place.
 
 ---
 
 ### US-07: PDF Download
 **As a user who wants to save or share a digest, I want to download it as a PDF, so that I have a portable copy outside the browser.**
 
-Example: After the digest renders in the UI, user clicks "Download PDF." A formatted PDF opens or downloads with the digest content — headlines, summaries, and source links — laid out cleanly for reading.
+Example: After the story list renders in the UI, user clicks "Download PDF." A formatted PDF opens or downloads with the story items — title, body, date, and source link — laid out cleanly for reading.
 
 ---
 
@@ -153,7 +156,7 @@ Example: After the digest renders in the UI, user clicks "Download PDF." A forma
 
 ### Architecture Overview
 
-The system follows a linear pipeline architecture. Each stage receives data from the previous and passes results forward. The API layer exposes this pipeline to the frontend via a trigger endpoint that runs the pipeline synchronously and returns the completed digest in a single response.
+The system follows a linear pipeline architecture. Each stage receives data from the previous and passes results forward. The API layer exposes this pipeline to the frontend via a trigger endpoint that runs the pipeline synchronously and returns the completed story list in a single response.
 
 ```
 Email Inbox (IMAP)
@@ -162,16 +165,17 @@ Email Inbox (IMAP)
  Ingestion Layer         — connect, filter by folder + date range, fetch emails
         │
         ▼
- Extraction Layer        — parse MIME, HTML→text, extract stories and links
+ Extraction Layer        — parse MIME, HTML→text, segment story items, extract links and dates
         │
         ▼
- Deduplication Layer     — embed stories, cluster by semantic similarity (within-run)
+ Logic Filter Layer      — remove boilerplate/housekeeping sections (not short valid stories)
         │
         ▼
- AI Review Layer         — Claude classifies each story group as KEEP or DROP (haiku, pre-generation filter)
+ Deduplication Layer     — embed body text, cluster by semantic similarity (within-run);
+                           select one representative item per cluster
         │
         ▼
- AI Generation Layer     — Claude API generates one summary per story group (batched single call, MVP cap: 50)
+ LLM Filter Layer        — Claude binary keep/drop on deduplicated items (haiku, low-cost)
         │
         ▼
  Storage Layer           — SQLite stores the most recent digest output
@@ -180,7 +184,7 @@ Email Inbox (IMAP)
  API Layer (FastAPI)     — trigger endpoint (sync response), digest retrieval, PDF export
         │
         ▼
- Frontend (Vanilla JS)   — category/folder selection, date range, generate button, output view, PDF download
+ Frontend (Vanilla JS)   — folder selection, date range, generate button, output view, PDF download
 ```
 
 ### Project Directory Structure
@@ -194,18 +198,17 @@ newsletter-digest/
 ├── ingestion/
 │   ├── __init__.py
 │   ├── imap_client.py          # IMAPClient wrapper — connect, folder select, UID search, fetch
-│   └── email_parser.py         # MIME parsing, HTML→text, metadata extraction
+│   └── email_parser.py         # MIME parsing, HTML→text, story segmentation, metadata extraction
 │
 ├── processing/
 │   ├── __init__.py
 │   ├── embedder.py             # sentence-transformers encoding + community_detection clustering
-│   ├── deduplicator.py         # Cluster → merged story groups with combined source links
-│   └── digest_builder.py       # Orchestrates full pipeline; emits progress events
+│   ├── deduplicator.py         # Cluster → representative story item selection
+│   └── digest_builder.py       # Orchestrates full pipeline; returns story list JSON
 │
 ├── ai/
 │   ├── __init__.py
-│   ├── story_reviewer.py       # Pre-generation KEEP/DROP classifier (haiku, tool-use schema)
-│   └── claude_client.py        # Anthropic SDK, prompt templates, tool-use schema
+│   └── claude_client.py        # Anthropic SDK — binary keep/drop filter prompt + tool-use schema
 │
 ├── api/
 │   ├── __init__.py
@@ -231,9 +234,10 @@ newsletter-digest/
 ### Key Design Patterns
 
 - **Thin API routes:** Routes validate input, call into the pipeline, and return the result. No pipeline logic in route handlers.
-- **Synchronous pipeline response:** `digest_builder.py` runs the full pipeline and returns the completed digest JSON. The frontend shows a loading state while the request is in flight; the digest renders when the response arrives.
-- **Folder name is the only input:** The backend receives a single folder name string and reads it directly. Preset shortcuts in the UI are hardcoded in the frontend for convenience; they carry no special meaning to the backend. The pipeline has no concept of categories — it only knows about folder names.
-- **Stateless within-run dedup:** Embeddings are computed at runtime and held in memory during the pipeline run. Nothing is written to the database for dedup purposes. This keeps the MVP schema simple.
+- **Synchronous pipeline response:** `digest_builder.py` runs the full pipeline and returns the completed story list JSON. The frontend shows a loading state while the request is in flight; the result renders when the response arrives.
+- **Folder name is the only input:** The backend receives a single folder name string and reads it directly. Preset shortcuts in the UI are hardcoded in the frontend for convenience; they carry no special meaning to the backend.
+- **Stateless within-run dedup:** Embeddings are computed at runtime and held in memory during the pipeline run. Nothing is written to the database for dedup purposes.
+- **Extracted, not generated:** Story text comes from the original newsletter. The pipeline selects and filters — it does not rewrite, summarize, or invent content.
 - **Single active digest:** The database stores only the most recently completed digest. The frontend retrieves and displays this on load, or replaces it when a new one is generated.
 
 ---
@@ -259,14 +263,15 @@ newsletter-digest/
 
 ### Feature 2: Content Extraction
 
-**Purpose:** Parse raw MIME emails into structured story content suitable for embedding and summarization.
+**Purpose:** Parse raw MIME emails into structured story records suitable for deduplication.
 
 **Operations:**
 - Parse multipart MIME with Python `email.message_from_bytes` using `policy.default`
 - Prefer `text/plain` parts; fall back to `text/html` (the common case for newsletters)
 - Pre-process HTML with BeautifulSoup: strip `<img>`, `<style>`, `<script>`, and hidden pre-header elements
 - Convert cleaned HTML to readable text using `html2text` (preserves hyperlinks, removes images)
-- Extract per-email: subject, sender name/domain, received date, body text, and all hyperlinks with anchor text
+- Segment the email body into individual story items using structural heuristics (blank line boundaries, horizontal rule tags, repeated heading patterns)
+- For each story item, extract: title (first line/heading if present, may be absent), body text, link (first substantive hyperlink in the item, may be absent), newsletter name (from sender), and date (email received date)
 
 **Pitfall handling:**
 - HTML-only emails (no `text/plain` part) — handled by HTML fallback, which is the default path
@@ -274,68 +279,89 @@ newsletter-digest/
 - Invisible pre-header text (white-on-white, `display:none`, `font-size:0`) — stripped by BeautifulSoup pre-pass
 - Tracking pixel `<img>` tags — removed before html2text conversion
 
----
-
-### Feature 3: Story-Level Deduplication (Within-Run)
-
-**Purpose:** Identify when multiple newsletters in the current run cover the same event and group them into a single story cluster.
-
-**Scope:** Deduplication operates only across the emails fetched in the current run. No comparison against prior runs. Embeddings are held in memory and discarded after the run completes.
-
-**Operations:**
-- Split each email body into story candidates using structural heuristics (blank line boundaries, horizontal rule tags, repeated heading patterns)
-- Encode story titles + first 2–3 sentences using `sentence-transformers` (`all-MiniLM-L6-v2`, 22MB, CPU-compatible)
-- Run `util.community_detection` at cosine similarity threshold 0.78 to form clusters
-- Each cluster → one digest entry; all contributing newsletters and their source links are recorded for that entry
-
-**What "same story" means:** Two stories are merged if they describe the same specific event or announcement (same funding round, same product release, same regulatory ruling). Two different articles about a broad shared theme (e.g., "AI regulation") that address distinct developments remain separate entries.
-
----
-
-### Feature 4: AI Digest Generation
-
-**Purpose:** Use the Claude API to generate a human-readable digest entry for each deduplicated story group that has passed the AI review step.
-
-**Architecture note:** The generation pipeline is intentionally hybrid. Deterministic rules (HTML extraction, link filtering, semantic clustering) do the heavy lifting. An AI review step (`story_reviewer.py`) handles ambiguous filtering before generation, removing non-story groups that deterministic rules cannot reliably catch. Only story groups that pass review reach the generation step.
-
-**Model:** `claude-haiku-4-5` (default). Configurable via `CLAUDE_MODEL` in `.env` if the user wants to upgrade to `claude-sonnet-4-6`.
-
-**Prompt structure per cluster:**
-```
-You are generating a newsletter digest entry focused on {category}.
-
-The following {N} excerpts are different newsletters covering the same story:
-
-<source newsletter="{name}">
-{extracted text}
-</source>
-...
-
-Write a digest entry with:
-- Headline: Clear and direct, max 12 words
-- Summary: 2–4 sentences capturing the most complete picture across all versions, prioritizing clarity over completeness
-- Significance: One sentence on why this matters for someone following {category}
-```
-
-**Structured output via Claude tool use:**
+**Story record shape:**
 ```json
 {
-  "headline": "string",
-  "summary": "string",
-  "significance": "string",
-  "sources": [
-    { "newsletter": "string", "url": "string", "anchor_text": "string" }
-  ]
+  "title": "string or null",
+  "body": "string",
+  "link": "string or null",
+  "newsletter": "string",
+  "date": "YYYY-MM-DD"
 }
 ```
 
-**Batching:** All reviewed story groups are passed to Claude in a single API call using a multi-cluster prompt structure. This minimizes API calls and cost regardless of how many unique stories the run produces.
-
-**MVP cap:** A temporary limit of 50 story groups per generation call is applied in `digest_builder.py` after the AI review step. This constraint exists to stay within output token limits during the MVP phase and is not a permanent design decision — it will be replaced by batched generation in Phase 2.
+Title and link are optional — untitled items and link-free items are valid story records and are not dropped.
 
 ---
 
-### Feature 5: Folder Selection
+### Feature 3: Logic Filter
+
+**Purpose:** Remove sections of newsletter emails that are clearly boilerplate or housekeeping content — not story items — before embedding and deduplication.
+
+**What is removed:**
+- Unsubscribe footers and legal notices
+- "Manage preferences," "View in browser," "Forward this email" sections
+- Sponsor call-to-action blocks that contain no substantive content (e.g., "Click here to learn more")
+- Repeated newsletter branding headers with no story content
+
+**What is NOT removed:**
+- Short valid stories — legitimate items that are only one sentence or a few words plus a link. Story brevity is not a filter criterion.
+- Sponsor content that constitutes a genuine story or announcement (descriptive text about a product, report, or event)
+- Items that happen to contain link text resembling a CTA if the surrounding body text is substantive
+
+**Implementation approach:** Rule-based heuristics on section structure and anchor text patterns. No minimum body length. When in doubt, preserve the item — false positives (keeping noise) are caught by the downstream LLM filter; false negatives (dropping valid stories) are unrecoverable.
+
+---
+
+### Feature 4: Story-Level Deduplication (Within-Run)
+
+**Purpose:** Identify when multiple newsletters cover the same event and select one representative story item per cluster.
+
+**Scope:** Deduplication operates only across the story items extracted in the current run. No comparison against prior runs. Embeddings are held in memory and discarded after the run completes.
+
+**Deduplication signal:** Body text is the primary signal. Two items describe the same story when their body text is semantically similar — not based on title match or link match, which can differ across newsletters even for identical stories.
+
+**Operations:**
+- Encode each story item's body text using `sentence-transformers` (`all-MiniLM-L6-v2`, 22MB, CPU-compatible)
+- Run `util.community_detection` at cosine similarity threshold 0.78 to form clusters
+- From each cluster, select one representative item
+
+**Representative selection order** (applied in order; earlier criteria take priority):
+1. **Longest body text** — the item with the most complete extracted body
+2. **Has title** — if tied on body length, prefer items that have a title over those that do not
+3. **Real content URL** — if still tied, prefer items whose link resolves to a content page rather than a tracking redirect
+
+**Cross-date handling:** All items from the full date range are pooled into a single deduplication pass. If the same story appears in newsletters on different dates within the run, the cluster's representative is selected by the criteria above — but the date field on the output item is always the earliest date among all items in that cluster, preserving chronological context.
+
+**What "same story" means:** Two items are merged if they describe the same specific event or announcement (same funding round, same product release, same regulatory ruling). Two different articles about a broad shared theme (e.g., "AI regulation") that address distinct developments remain separate items.
+
+---
+
+### Feature 5: LLM Keep/Drop Filter
+
+**Purpose:** Apply a binary judgment pass using Claude to catch housekeeping noise, navigation sections, and low-signal content that slipped past the logic filter.
+
+**Model:** `claude-haiku-4-5` (default). Configurable via `CLAUDE_MODEL` in `.env`.
+
+**Input:** Each deduplicated story item's body text (and title if present).
+
+**Output:** `KEEP` or `DROP` for each item. No generated text, no rewriting.
+
+**What LLM drops:**
+- Items that consist entirely of navigation links, menu structures, or index pages with no story content
+- Repeated boilerplate that pattern-based logic missed
+- Items with no intelligible content after extraction
+
+**What LLM does NOT drop:**
+- Short valid stories (even one-sentence items are kept if they contain genuine story content)
+- Sponsor content with substantive descriptions
+- Items the LLM finds surprising, niche, or unfamiliar — uncertainty defaults to KEEP
+
+**Development-only behavior:** During development, the LLM may produce verbose reasoning about borderline items. This reasoning is captured in server logs at DEBUG level. No flagging output appears in production API responses — the response contains only the kept story items.
+
+---
+
+### Feature 6: Folder Selection
 
 **Purpose:** Let the user specify which IMAP folder to read for a given digest run.
 
@@ -346,36 +372,34 @@ Write a digest entry with:
 - The user can change which folder they read on any run without any reconfiguration
 - Only one folder is processed per run
 
-**Example:** The UI shows shortcut buttons for "AI," "News," and "Tech." Clicking "AI" populates the input with `AI Newsletters`. The user can edit this to `AI Weekly` before submitting. Alternatively, they ignore the shortcuts and type any folder name directly.
-
 **No validation of folder existence before submission** — if the folder does not exist on the server, the generate endpoint returns a clear error that is displayed in the UI.
 
 ---
 
-### Feature 6: PDF Export
+### Feature 7: PDF Export
 
 **Purpose:** Allow the user to download the current digest as a formatted PDF for offline reading or sharing.
 
-**Implementation:** Server-side PDF generation using `weasyprint` (HTML→PDF). The digest JSON is rendered into an HTML template server-side, then converted to PDF. The endpoint streams the PDF bytes with `Content-Type: application/pdf` and `Content-Disposition: attachment`.
+**Implementation:** Server-side PDF generation using `weasyprint` (HTML→PDF). The story list JSON is rendered into an HTML template server-side, then converted to PDF. The endpoint streams the PDF bytes with `Content-Type: application/pdf` and `Content-Disposition: attachment`.
 
 **Endpoint:** `GET /api/digests/{digest_id}/pdf`
 
-**PDF content:** All digest entries in order — headline, summary, significance, and source links (URLs printed as text for accessibility in printed form).
+**PDF content:** All story items in date order — title (if present), body text, source newsletter, date, and link (printed as URL text for accessibility in printed form).
 
-**Alternative if weasyprint has dependency issues on the deployment target:** `reportlab` (pure Python, no system dependencies) as a fallback, generating a simpler but fully portable PDF.
+**Alternative if weasyprint has dependency issues:** `reportlab` (pure Python, no system dependencies) as a fallback, generating a simpler but fully portable PDF.
 
 ---
 
-### Feature 7: Loading State During Generation
+### Feature 8: Loading State During Generation
 
 **Purpose:** Keep the user informed that the system is working while the digest generates.
 
-**Mechanism:** The frontend disables the Generate button and shows a loading indicator immediately on form submission. The `POST /api/digests/generate` endpoint runs the full pipeline synchronously and returns the completed digest (or an error) in a single HTTP response. When the response arrives, the loading state clears and the digest renders — or an error message is displayed.
+**Mechanism:** The frontend disables the Generate button and shows a loading indicator immediately on form submission. The `POST /api/digests/generate` endpoint runs the full pipeline synchronously and returns the completed story list (or an error) in a single HTTP response. When the response arrives, the loading state clears and the list renders — or an error message is displayed.
 
 **Frontend behavior:**
 - Generate button transitions to a disabled "Generating…" state on click
 - A loading indicator (`<progress>` element in indeterminate mode, styled by Pico.css) appears below the button
-- On success: loading clears, digest renders in the output area
+- On success: loading clears, story list renders in the output area
 - On error: loading clears, a human-readable error message appears in the output area (e.g., "Folder 'AI Newsletters' was not found. Check your folder name and try again.")
 
 **Note:** Real-time step-by-step progress streaming via SSE is deferred to Phase 2.
@@ -389,7 +413,7 @@ Write a digest entry with:
 | Technology | Version | Purpose |
 |---|---|---|
 | Python | 3.11+ | Runtime |
-| FastAPI | 0.115+ | Web framework, API routing, BackgroundTasks |
+| FastAPI | 0.115+ | Web framework, API routing |
 | Uvicorn | 0.30+ | ASGI server |
 | SQLAlchemy Core | 2.0+ | Database schema, async queries |
 | aiosqlite | 0.20+ | Async SQLite driver |
@@ -410,7 +434,7 @@ Write a digest entry with:
 
 | Technology | Version | Purpose |
 |---|---|---|
-| anthropic | 0.40+ | Claude API SDK (async client) |
+| anthropic | 0.40+ | Claude API SDK (async client) — binary keep/drop filter only |
 | sentence-transformers | 3.x | Semantic embeddings for within-run dedup |
 | torch (CPU only) | 2.x | Required by sentence-transformers; CPU install sufficient |
 
@@ -420,7 +444,7 @@ Write a digest entry with:
 |---|---|---|
 | Pico.css | 2.x | Semantic classless CSS framework |
 | marked.js | 13.x | Markdown rendering (CDN import) |
-| Vanilla JS (ES2022) | — | State management, SSE, form handling, rendering |
+| Vanilla JS (ES2022) | — | State management, form handling, rendering |
 | Native `<input type="date">` | — | Date range inputs (no additional dependency) |
 
 ### PDF Export
@@ -464,6 +488,8 @@ CLAUDE_MODEL=claude-haiku-4-5
 
 # App Settings
 DATABASE_URL=sqlite+aiosqlite:///./data/digest.db
+MAX_EMAILS_PER_RUN=50
+DEDUP_THRESHOLD=0.78
 HOST=0.0.0.0
 PORT=8000
 ```
@@ -493,7 +519,7 @@ Single process: `uvicorn main:app --host 0.0.0.0 --port 8000`. The `static/` dir
 ### Digest Endpoints
 
 #### `POST /api/digests/generate`
-Trigger digest generation. Returns a job ID immediately; pipeline runs as a background task.
+Trigger digest generation. Pipeline runs synchronously; returns the completed story list on completion.
 
 **Request:**
 ```json
@@ -504,11 +530,11 @@ Trigger digest generation. Returns a job ID immediately; pipeline runs as a back
 }
 ```
 
-**Response (200 OK) — pipeline runs synchronously, full digest returned on completion:**
+**Response (200 OK):**
 ```json
 {
   "id": "a3f2c1d8-...",
-  "generated_at": "2026-03-17T09:14:00Z",
+  "generated_at": "2026-04-01T09:14:00Z",
   "folder": "AI Newsletters",
   "date_start": "2026-03-10",
   "date_end": "2026-03-17",
@@ -533,31 +559,47 @@ Retrieve the most recently completed digest.
 ```json
 {
   "id": "b7e1...",
-  "generated_at": "2026-03-17T09:14:00Z",
+  "generated_at": "2026-04-01T09:14:00Z",
   "folder": "AI Newsletters",
   "date_start": "2026-03-10",
   "date_end": "2026-03-17",
   "story_count": 18,
   "stories": [
     {
-      "headline": "OpenAI Releases GPT-5 with Multimodal Reasoning",
-      "summary": "OpenAI launched GPT-5 on March 14, 2026...",
-      "significance": "Developers building AI pipelines will need to re-evaluate context management as multimodal inputs change token costs significantly.",
-      "sources": [
-        { "newsletter": "TLDR AI", "url": "https://...", "anchor_text": "OpenAI GPT-5 launch" },
-        { "newsletter": "The Rundown", "url": "https://...", "anchor_text": "GPT-5 is here" }
-      ]
+      "title": "OpenAI Releases GPT-5 with Multimodal Reasoning",
+      "body": "OpenAI launched GPT-5 on March 14, 2026, introducing native multimodal reasoning across text, images, and audio. The model is available via API immediately...",
+      "link": "https://openai.com/blog/gpt-5",
+      "newsletter": "TLDR AI",
+      "date": "2026-03-14"
+    },
+    {
+      "title": null,
+      "body": "Google DeepMind published Gemini 2.0 Ultra benchmarks showing SOTA on MMLU.",
+      "link": "https://deepmind.google/research/gemini",
+      "newsletter": "Import AI",
+      "date": "2026-03-15"
     }
   ]
 }
 ```
+
+**Story item shape:**
+| Field | Type | Notes |
+|---|---|---|
+| `title` | `string \| null` | First heading/line of the item, if present. Untitled items have `null`. |
+| `body` | `string` | Extracted body text of the story item. |
+| `link` | `string \| null` | First substantive content URL from the item, if present. |
+| `newsletter` | `string` | Source newsletter name (from email sender). |
+| `date` | `string` | Publication date in `YYYY-MM-DD` format. For cross-source duplicates, this is the earliest date in the cluster. |
+
+Stories are sorted oldest date first.
 
 ---
 
 #### `GET /api/digests/{digest_id}/pdf`
 Generate and stream a PDF of the specified digest.
 
-**Response:** `Content-Type: application/pdf`, `Content-Disposition: attachment; filename="digest-2026-03-17.pdf"`
+**Response:** `Content-Type: application/pdf`, `Content-Disposition: attachment; filename="digest-2026-04-01.pdf"`
 
 ---
 
@@ -572,7 +614,7 @@ Returns `{"status": "ok"}`.
 
 ### MVP Success Definition
 
-The MVP is successful when a user can open the web interface, select a newsletter folder, trigger a digest, and receive a formatted digest that correctly merges overlapping stories, preserves source links, and is downloadable as a PDF. A loading state is shown while the pipeline runs; the result appears when it completes. Email credentials and backend configuration are set once by the developer and are never part of the user-facing experience.
+The MVP is successful when a user can open the web interface, select a newsletter folder, trigger a digest, and receive a deduplicated list of story items that correctly eliminates near-duplicate coverage across newsletters, preserves each item's original text and source link, and is downloadable as a PDF. A loading state is shown while the pipeline runs; the result appears when it completes. Email credentials and backend configuration are set once by the developer and are never part of the user-facing experience.
 
 ### Functional Requirements
 
@@ -580,30 +622,33 @@ The MVP is successful when a user can open the web interface, select a newslette
 |---|---|
 | ✅ Connect to any IMAP server with host, port, username, and app password | Required |
 | ✅ Read all emails from the specified folder within the selected date range | Required |
-| ✅ Extract readable text from HTML-only newsletter emails | Required |
-| ✅ Detect and merge stories covering the same event across newsletters in the current run | Required |
-| ✅ Generate one digest entry per unique story with headline, summary, significance, and source links | Required |
+| ✅ Extract readable story items from HTML-only newsletter emails | Required |
+| ✅ Logic filter removes boilerplate without dropping valid short stories | Required |
+| ✅ Detect and merge items covering the same event; retain one representative per cluster | Required |
+| ✅ LLM binary filter removes any remaining non-story items without affecting valid short items | Required |
+| ✅ Output story list is sorted oldest-date-first with date as a field on each item | Required |
 | ✅ Show a loading state (disabled button + progress indicator) while digest generates | Required |
-| ✅ Display completed digest in the UI rendered from structured JSON | Required |
+| ✅ Display completed story list in the UI | Required |
 | ✅ Allow download of the current digest as a PDF | Required |
 | ✅ UI provides a folder name input and optional preset shortcut buttons (hardcoded in the frontend) | Required |
 | ✅ UI includes a date range selector (start and end date inputs) | Required |
 | ✅ Frontend works as a standalone deployable page | Required |
-| ✅ App runs as a single `uvicorn` process with no external services (no Redis, no broker) | Required |
+| ✅ App runs as a single `uvicorn` process with no external services | Required |
 
 ### Quality Indicators
 
 - Digest generation for 10 emails completes in under 60 seconds
 - Semantic dedup correctly identifies the same story from two different newsletters at least 90% of the time during manual testing
+- No valid short story (single sentence, one-liner roundup item) is dropped by the logic filter or LLM filter
 - No newsletter in the date range is silently skipped — all failures are surfaced as error responses and displayed in the UI
 - The UI is usable on a 1280px viewport without horizontal scrolling
 
 ### User Experience Goals
 
 - A user who opens the web interface for the first time can generate a digest without any instructions
-- All controls (category, date range, generate button) are visible without scrolling
-- The loading indicator is visible immediately after clicking Generate, so the user knows the request is in flight
-- The digest is scannable — a user should be able to assess 18 stories in under 5 minutes
+- All controls (folder, date range, generate button) are visible without scrolling
+- The loading indicator is visible immediately after clicking Generate
+- The digest is scannable — a user should be able to assess 18 story items in under 5 minutes
 
 ---
 
@@ -613,18 +658,17 @@ The MVP is successful when a user can open the web interface, select a newslette
 **Goal:** A working end-to-end pipeline as a runnable script. No web server, no UI.
 
 **Deliverables:**
-- ✅ `config.py` — Pydantic BaseSettings, `.env` loading, startup validation, category parsing
+- ✅ `config.py` — Pydantic BaseSettings, `.env` loading, startup validation
 - ✅ `database.py` — SQLite schema (digest_runs table only), async engine, Alembic baseline
 - ✅ `ingestion/imap_client.py` — IMAP connection, read-only folder selection, date range search, batched fetch
-- ✅ `ingestion/email_parser.py` — MIME parsing, BeautifulSoup pre-processing, html2text conversion, link extraction
+- ✅ `ingestion/email_parser.py` — MIME parsing, BeautifulSoup pre-processing, html2text conversion, story segmentation, link and date extraction
 - ✅ `processing/embedder.py` — sentence-transformers encoding (in-memory), community_detection clustering
-- ✅ `processing/deduplicator.py` — cluster → merged story groups with combined source links
-- ✅ `ai/story_reviewer.py` — pre-generation KEEP/DROP classifier; Claude haiku call; filters non-story groups before generation
-- ✅ `ai/claude_client.py` — Anthropic SDK async client, batched multi-cluster prompt, tool-use schema
-- ✅ `processing/digest_builder.py` — pipeline function; runs all stages end-to-end (ingestion → extraction → cluster → review → generate → store) and returns completed digest JSON
+- ✅ `processing/deduplicator.py` — cluster → representative story item selection (longest body → has title → real content URL)
+- ✅ `ai/claude_client.py` — binary keep/drop filter: Anthropic SDK async client, filter prompt, tool-use schema
+- ✅ `processing/digest_builder.py` — pipeline function; runs all stages end-to-end (ingestion → extraction → logic filter → embed/cluster → select representative → LLM filter → sort → store) and returns completed story list JSON
 - ✅ CLI entry point: `python -m processing.digest_builder --folder "AI Newsletters" --start 2026-03-10 --end 2026-03-17`
 
-**Validation:** Run against a real newsletter folder with at least two overlapping newsletters. Confirm at least one merged story entry. Confirm the full digest JSON is printed and written to the database.
+**Validation:** Run against a real newsletter folder with at least two overlapping newsletters. Confirm at least one pair of near-duplicate items is merged into one. Confirm no valid short story was dropped. Confirm the full story list JSON is printed and written to the database.
 
 ---
 
@@ -633,12 +677,12 @@ The MVP is successful when a user can open the web interface, select a newslette
 
 **Deliverables:**
 - ✅ `main.py` — FastAPI app, StaticFiles mount, router registration
-- ✅ `api/digests.py` — `POST /api/digests/generate` (runs pipeline, returns completed digest), `GET /api/digests/latest`
+- ✅ `api/digests.py` — `POST /api/digests/generate` (runs pipeline, returns completed story list), `GET /api/digests/latest`
 - ✅ `api/health.py` — health check
 - ✅ Digest result written to `digest_runs` table on completion; status is `complete` or `failed`
 - ✅ Error handling: IMAP failures and Claude API failures return structured error JSON with human-readable messages
 
-**Validation:** Use `curl` or HTTPie to trigger a digest. Confirm the response contains the full digest JSON. Confirm `GET /api/digests/latest` returns the same result. Confirm error cases return a readable error message.
+**Validation:** Use `curl` or HTTPie to trigger a digest. Confirm the response contains the full story list JSON with `title`, `body`, `link`, `newsletter`, `date` fields. Confirm `GET /api/digests/latest` returns the same result. Confirm error cases return a readable error message.
 
 ---
 
@@ -647,18 +691,18 @@ The MVP is successful when a user can open the web interface, select a newslette
 
 **Deliverables:**
 - ✅ `static/index.html` — single-page shell with Pico.css, semantic layout
-- ✅ `static/app.js` — form state management; `POST` trigger; loading state (disabled button + progress indicator); `marked.js` digest rendering; error display
+- ✅ `static/app.js` — form state management; `POST` trigger; loading state (disabled button + progress indicator); `marked.js` story list rendering; error display
 - ✅ Folder name text input with optional preset shortcut buttons (hardcoded in the frontend); shortcuts populate the input on click
 - ✅ Date range inputs (native `<input type="date">` pair with client-side start≤end validation)
 - ✅ Generate button (disabled while in progress)
 - ✅ Loading indicator shown while request is in flight; clears on success or error
-- ✅ Digest rendered in an `<article>` card with headlines, summaries, significance lines, and source links
+- ✅ Story list rendered as cards — title (or untitled placeholder), body text, source newsletter, date, and link
 - ✅ "Download PDF" button — calls `GET /api/digests/{id}/pdf`
-- ✅ `api/export.py` — PDF generation via weasyprint from digest JSON
+- ✅ `api/export.py` — PDF generation via weasyprint from story list JSON
 - ✅ `localStorage` persistence for last-used folder selection and date range
 - ✅ `Dockerfile` for single-container deployment
 
-**Validation:** Open in browser. Type a real folder name (or click a preset shortcut), set date range, click Generate — confirm the button disables and loading indicator appears. When complete, digest renders. Click Download PDF and confirm output. Run again with a different folder name to confirm folder selection is free-form across runs. Test an invalid folder name and confirm a readable error appears. Verify the page loads cleanly at 1280px and 768px.
+**Validation:** Open in browser. Type a real folder name (or click a preset shortcut), set date range, click Generate — confirm the button disables and loading indicator appears. When complete, story list renders with title, body, date, newsletter, and link for each item. Click Download PDF and confirm output. Verify untitled items render without breaking the layout. Test an invalid folder name and confirm a readable error appears. Verify the page loads cleanly at 1280px and 768px.
 
 ---
 
@@ -671,7 +715,7 @@ The MVP is successful when a user can open the web interface, select a newslette
 - ✅ `.env.example` with all keys, placeholder values, and inline documentation comments
 - ✅ `README.md` with 5-step quick start, `.env` reference, and deployment instructions
 - ✅ Frontend reviewed for portfolio quality: consistent spacing, clean typography, no visible rough edges
-- ✅ Manual test against at least 3 different newsletter types to validate HTML extraction quality
+- ✅ Manual test against at least 3 different newsletter types to validate extraction and dedup quality
 - ✅ Tune dedup threshold based on real results from user's actual newsletter folder
 
 ---
@@ -681,19 +725,16 @@ The MVP is successful when a user can open the web interface, select a newslette
 ### Phase 2 Additions (Planned)
 
 - **Real-time progress streaming** — Server-Sent Events (SSE) replacing the simple loading state; the frontend receives step-by-step pipeline updates as the digest generates
-- **Batched digest generation** — Remove the MVP 50-group cap and replace it with batched generation (15–25 story groups per Claude call); results are aggregated into a single digest response. The AI review step runs before batching so only valid story groups are batched.
 - **Scheduled digest generation** — APScheduler with a configurable cron expression; runs the pipeline automatically and saves the result
-- **Email delivery** — SMTP digest delivery (HTML + plain text fallback); user chooses "in browser," "email only," or "both"
-- **Runtime configuration via UI** — settings panel for schedule interval and delivery preferences; depends on scheduling and delivery features being present
-- **Cross-run deduplication** — persist story embeddings in SQLite across digest runs; detect when a new email covers a story already summarized in a prior run and flag it as a follow-up rather than a new entry
-- **Multiple folder configurations per run** — process two or more folders in a single digest run (e.g., "AI Newsletters" + "Startup Newsletters")
+- **Email delivery** — SMTP digest delivery (HTML + plain text fallback)
+- **Cross-run deduplication** — persist story embeddings in SQLite across digest runs; detect when a new email covers a story already seen in a prior run
+- **Multiple folder configurations per run** — process two or more folders in a single digest run
 - **Multiple user accounts** — per-user configuration and digest history; aligned with OAuth2 authentication
-- **OAuth2 authentication** — for Gmail (Google Cloud Console) and Outlook (MSAL); required for multi-user support
 
 ### Later Additions
 
 - **Digest history** — browse and re-read past runs from a history panel in the UI
-- **Importance ranking** — ask Claude to rank stories by significance within the category and reorder the digest accordingly
+- **Importance ranking** — rank stories by significance within the category and reorder accordingly
 - **Notion / Obsidian export** — write each digest as a page in the user's knowledge base
 - **Slack / Discord webhook delivery**
 - **Per-newsletter analytics** — which sources contribute the most unique stories vs. mostly duplicate coverage
@@ -710,30 +751,37 @@ The MVP is successful when a user can open the web interface, select a newslette
 ---
 
 ### Risk 2: HTML Email Parsing Quality
-**Risk:** Newsletter HTML varies across platforms (Substack, Beehiiv, ConvertKit, Mailchimp). Poor extraction means the digest summarizes noise instead of content.
+**Risk:** Newsletter HTML varies across platforms (Substack, Beehiiv, ConvertKit, Mailchimp). Poor extraction means the digest surfaces noise instead of content.
 
 **Mitigation:** `html2text` handles the majority of newsletters well. BeautifulSoup pre-processing removes the most common noise patterns. Log the character count of extracted text per email during the pipeline run — extractions under 200 characters are flagged as suspected parse failures in server logs. Phase 4 includes manual testing against at least 3 different newsletter platforms.
 
 ---
 
-### Risk 3: Claude API Cost on Large Catch-Up Runs
-**Risk:** A user processing a large backlog (e.g., 3 weeks of emails = 150+ messages) could generate a surprisingly large Claude API bill.
+### Risk 3: Claude API Cost
+**Risk:** The LLM filter step adds API cost per run. A user processing a large backlog could see unexpected costs.
 
-**Mitigation:** Default model is `claude-haiku-4-5` (significantly cheaper than Sonnet). All story clusters are batched into a single API call. Add a configurable `MAX_EMAILS_PER_RUN` in `.env` (default: 50) that caps a single digest run. Log token usage per run in `digest_runs` so the user can monitor costs.
+**Mitigation:** Default model is `claude-haiku-4-5` (significantly cheaper than Sonnet). The filter call is lightweight — binary keep/drop judgments only, no generation. Add a configurable `MAX_EMAILS_PER_RUN` in `.env` (default: 50) that caps a single digest run. Log token usage per run in `digest_runs` so the user can monitor costs.
 
 ---
 
 ### Risk 4: Deduplication False Positives
-**Risk:** The 0.82 cosine similarity threshold may merge stories that are actually distinct — two different funding rounds in the same sector, for example.
+**Risk:** The 0.78 cosine similarity threshold may merge stories that are actually distinct — two different funding rounds in the same sector, for example.
 
 **Mitigation:** Make the threshold configurable in `.env` (`DEDUP_THRESHOLD=0.78`). Log cluster sizes in the pipeline output — clusters with more than 5 members are logged as warnings for manual inspection. Phase 4 includes threshold tuning based on real results from the user's actual newsletters.
 
 ---
 
-### Risk 5: weasyprint System Dependencies
-**Risk:** weasyprint requires system-level libraries (Pango, Cairo, GLib) that may not be available on all deployment targets. This can make Docker builds unexpectedly complex.
+### Risk 5: Logic Filter Over-Aggressiveness
+**Risk:** The logic filter might inadvertently remove valid short stories or roundup items that pattern-match boilerplate signals.
 
-**Mitigation:** Use the official weasyprint Docker base image or install system dependencies in the Dockerfile explicitly. If system dependency installation proves problematic, fall back to `reportlab` for pure-Python PDF generation, with a note in the README that the PDF output will be simpler in style.
+**Mitigation:** The filter operates on section structure and explicit boilerplate patterns — not on body length or word count. Short items are never a filter criterion. When uncertain, the filter preserves the item. LLM filter is the safety net for genuine noise. Phase 1 validation explicitly checks that no valid short story was dropped.
+
+---
+
+### Risk 6: weasyprint System Dependencies
+**Risk:** weasyprint requires system-level libraries (Pango, Cairo, GLib) that may not be available on all deployment targets.
+
+**Mitigation:** Use the official weasyprint Docker base image or install system dependencies in the Dockerfile explicitly. If system dependency installation proves problematic, fall back to `reportlab` for pure-Python PDF generation.
 
 ---
 
@@ -754,7 +802,7 @@ CREATE TABLE digest_runs (
     story_count   INTEGER DEFAULT 0,
     status        TEXT DEFAULT 'pending',  -- pending | in_progress | complete | failed
     error_message TEXT,
-    output_json   TEXT                     -- Full digest as JSON string
+    output_json   TEXT                     -- Full story list as JSON string
 );
 ```
 
@@ -769,7 +817,7 @@ Cross-run dedup, story embeddings, and processed email tracking are deferred to 
 | `html2text` | HTML → readable plain text |
 | `beautifulsoup4` + `lxml` | HTML pre-processing |
 | `sentence-transformers` | Semantic embeddings for dedup |
-| `anthropic` | Claude API SDK |
+| `anthropic` | Claude API SDK (binary filter) |
 | `sqlalchemy` + `aiosqlite` | Async SQLite |
 | `alembic` | Database migrations |
 | `pydantic-settings` | Config from `.env` |
@@ -782,8 +830,8 @@ Cross-run dedup, story embeddings, and processed email tracking are deferred to 
 | # | Assumption | Confidence | How to Validate |
 |---|---|---|---|
 | 1 | `all-MiniLM-L6-v2` encoding for 10 emails' worth of story chunks completes in well under 5 seconds on a modern CPU | High | Benchmark during Phase 1 |
-| 2 | `claude-haiku-4-5` produces digest quality acceptable to the user for daily use | Medium | Generate and compare sample digests from haiku vs sonnet during Phase 1 |
-| 3 | Batching all clusters into a single Claude API call stays within the model's context window for typical runs (2–10 emails) | High | Verify at Phase 1; add chunking if context limit is hit |
+| 2 | Body-text embeddings are a reliable deduplication signal across newsletters covering the same story | High | Validate against real newsletter pairs in Phase 1 |
+| 3 | `claude-haiku-4-5` binary keep/drop judgment is accurate enough for MVP filtering without missing valid short stories | Medium | Test with short roundup items in Phase 1 |
 | 4 | The user's newsletter folders contain only newsletters (email rules route them reliably) | High | User confirmed |
 | 5 | Blank-line and horizontal-rule heuristics are sufficient for story segmentation within typical newsletter emails | Medium | Test against real newsletters in Phase 1; refine if needed |
 | 6 | Dedup threshold of 0.78 is appropriate for the user's newsletter mix | Medium | Tune in Phase 4 based on actual results |

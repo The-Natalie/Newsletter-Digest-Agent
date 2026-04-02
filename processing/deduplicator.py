@@ -11,21 +11,36 @@ logger = logging.getLogger(__name__)
 # Anchor text substrings that indicate a CTA/boilerplate link rather than a story link.
 # Matched case-insensitively. Used to prefer genuine story links within a single chunk.
 _CTA_ANCHOR_SIGNALS: tuple[str, ...] = (
+    # Demo / trial CTAs
     "try a demo",
     "try demo",
     "request a demo",
     "book a demo",
     "get a demo",
+    "see it in action",
+    # Watch/view CTAs — "watch now" was confirmed missing (Deep View §15 Slack sponsor)
     "watch our",
     "watch the",
+    "watch now",
+    # Registration / sign-up CTAs
     "register free",
     "register now",
     "sign up free",
     "sign up now",
+    "start free",
+    "start for free",
+    "start free trial",
+    # Lead-gen / download CTAs (same family as existing entries)
+    "get the report",
+    "download the report",
+    "get the guide",
+    "get the whitepaper",
+    # Generic action CTAs
     "learn more",
     "read more",
     "find out more",
     "click here",
+    # Feedback / social / admin
     "share your thoughts",
     "terms of service",
     "privacy policy",
@@ -53,6 +68,18 @@ class StoryGroup:
     # sources shape: [{"newsletter": str, "url": str, "anchor_text": str}]
 
 
+_ANCHOR_IDEAL_MAX_WORDS = 7
+# Anchors with more words than this are treated as in-text prose references, not headlines.
+# They score 0 on the anchor-quality dimension; path_depth alone determines selection.
+# Within the headline range (≤7 words), more words = more descriptive = higher score.
+#
+# Confirmed scoring failures this threshold fixes:
+#   "small robots that looked like they came straight out of WALL-E" (11w) was beating
+#   "told reporters" (2w) at equal path_depth=7.
+#   "manage all of these features from one central hub" (9w) was beating "Airia" (1w)
+#   at equal path_depth=7. Both were in-text prose references, not headline links.
+
+
 def _score_source(source: dict) -> tuple[int, int]:
     """Score a source link for quality selection. Higher tuple = better source.
 
@@ -60,10 +87,11 @@ def _score_source(source: dict) -> tuple[int, int]:
     - path_depth: number of non-empty path segments in the URL.
       Deeper paths indicate specific article/content pages vs. homepages.
       e.g. /blog/2026/gpt-5-release → depth 3; https://openai.com/ → depth 0
-    - anchor_length: character length of the anchor text.
-      Among already-filtered (non-boilerplate) anchors, longer is more descriptive.
+    - anchor_score: word count of anchor text, capped at _ANCHOR_IDEAL_MAX_WORDS.
+      Anchors above the cap score 0 — they are prose-length in-text references,
+      not headlines. Within the cap, more words = more descriptive = higher score.
 
-    On URL parse error, path_depth defaults to 0 (anchor_length still used as tiebreaker).
+    On URL parse error, path_depth defaults to 0 (anchor_score still used as tiebreaker).
     """
     url = source.get("url", "")
     anchor = source.get("anchor_text", "")
@@ -72,7 +100,9 @@ def _score_source(source: dict) -> tuple[int, int]:
         path_depth = len([s for s in path.split("/") if s])
     except Exception:
         path_depth = 0
-    return (path_depth, len(anchor))
+    word_count = len(anchor.split())
+    anchor_score = word_count if word_count <= _ANCHOR_IDEAL_MAX_WORDS else 0
+    return (path_depth, anchor_score)
 
 
 def _build_sources(cluster: list[StoryChunk]) -> list[dict]:

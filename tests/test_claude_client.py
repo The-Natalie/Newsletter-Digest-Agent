@@ -4,7 +4,9 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from ai.claude_client import _BATCH_SIZE
+from ai.claude_client import _BATCH_SIZE, _SPARSE_CHUNK_THRESHOLD, _build_user_message
+from processing.deduplicator import StoryGroup
+from processing.embedder import StoryChunk
 
 
 def test_batch_size_value():
@@ -96,3 +98,54 @@ def test_retry_split_2_entries():
     assert len(half_a) == 1
     assert len(half_b) == 1
     assert half_a + half_b == batch
+
+
+# ---------------------------------------------------------------------------
+# Sparse input annotation tests (Loop 9D)
+# ---------------------------------------------------------------------------
+
+def _make_group(text: str) -> StoryGroup:
+    """Build a minimal StoryGroup with a single chunk of the given text."""
+    chunk = StoryChunk(text=text, sender="Test Newsletter", links=[])
+    return StoryGroup(chunks=[chunk], sources=[{"newsletter": "Test Newsletter", "url": "https://example.com", "anchor_text": "Story"}])
+
+
+def test_sparse_threshold_value():
+    """_SPARSE_CHUNK_THRESHOLD must be 150."""
+    assert _SPARSE_CHUNK_THRESHOLD == 150, (
+        f"_SPARSE_CHUNK_THRESHOLD is {_SPARSE_CHUNK_THRESHOLD}, expected 150."
+    )
+
+
+def test_sparse_annotation_present_below_threshold():
+    """A story group with total chunk chars < 150 gets a <note> annotation in the prompt."""
+    group = _make_group("A" * 100)  # 100 chars — below threshold of 150
+    result = _build_user_message([group], "AI Newsletters")
+    assert "<note>" in result, "Expected <note> annotation for sparse group (100 chars)"
+    assert "single-sentence summary is acceptable" in result
+
+
+def test_sparse_annotation_absent_above_threshold():
+    """A story group with total chunk chars >= 150 does NOT get a <note> annotation."""
+    group = _make_group("A" * 200)  # 200 chars — above threshold of 150
+    result = _build_user_message([group], "AI Newsletters")
+    assert "<note>" not in result, "Did not expect <note> annotation for normal group (200 chars)"
+
+
+def test_sparse_annotation_boundary_at_threshold_minus_one():
+    """A group with exactly _SPARSE_CHUNK_THRESHOLD - 1 chars gets the annotation."""
+    group = _make_group("A" * (_SPARSE_CHUNK_THRESHOLD - 1))
+    result = _build_user_message([group], "AI Newsletters")
+    assert "<note>" in result
+
+
+def test_sparse_schema_allows_one_sentence():
+    """Tool schema summary description must start with '1–4 sentences'."""
+    from ai.claude_client import _TOOL_SCHEMA
+    summary_desc = (
+        _TOOL_SCHEMA["input_schema"]["properties"]["entries"]
+        ["items"]["properties"]["summary"]["description"]
+    )
+    assert summary_desc.startswith("1\u20134 sentences"), (
+        f"Schema summary description should start with '1–4 sentences', got: {summary_desc!r}"
+    )

@@ -5,7 +5,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from processing.embedder import StoryChunk
-from processing.deduplicator import _build_sources, _is_cta_link
+from processing.deduplicator import _build_sources, _is_cta_link, _score_source, _ANCHOR_IDEAL_MAX_WORDS
 
 
 def _chunk(sender: str, links: list[dict]) -> StoryChunk:
@@ -170,3 +170,81 @@ def test_legitimate_sponsor_with_descriptive_anchor_kept():
     result = _build_sources(cluster)
     assert len(result) == 1
     assert result[0]["url"] == "https://sponsor.com/report-2026"
+
+
+# ---------------------------------------------------------------------------
+# CTA anchor filter — gap coverage (Loop 9D additions)
+# ---------------------------------------------------------------------------
+
+def test_cta_watch_now_filtered():
+    """'Watch now' is classified as a CTA — was missing from _CTA_ANCHOR_SIGNALS."""
+    assert _is_cta_link({"anchor_text": "Watch now"})
+
+
+def test_cta_watch_now_case_insensitive():
+    """'WATCH NOW' (all caps) is also classified as CTA — detection is case-insensitive."""
+    assert _is_cta_link({"anchor_text": "WATCH NOW"})
+
+
+def test_cta_get_the_report_filtered():
+    """'get the report' is classified as a CTA lead-gen pattern."""
+    assert _is_cta_link({"anchor_text": "get the report"})
+
+
+def test_cta_see_it_in_action_filtered():
+    """'see it in action' is classified as a CTA demo/interactive pattern."""
+    assert _is_cta_link({"anchor_text": "See it in action"})
+
+
+# ---------------------------------------------------------------------------
+# _score_source anchor word-count cap tests (Loop 9D — Phase 4)
+# Confirmed against actual Deep View diagnostic output (Task 8).
+# ---------------------------------------------------------------------------
+
+def test_score_source_prose_anchor_penalized():
+    """A 14-word in-text prose anchor (WALL-E case) returns anchor_score=0."""
+    anchor = "small robots that looked like they came straight out of WALL-E"
+    score = _score_source({"url": "https://example.com/a/b/c", "anchor_text": anchor})
+    assert score[1] == 0, f"Expected anchor_score=0 for 14-word anchor, got {score[1]}"
+
+
+def test_score_source_headline_beats_prose_at_same_depth():
+    """A 5-word headline outscores a 14-word prose anchor when path depth is equal."""
+    url = "https://example.com/robots/keynote/video"  # path_depth=3 for both
+    prose = _score_source({"url": url, "anchor_text": "small robots that looked like they came straight out of WALL-E"})
+    headline = _score_source({"url": url, "anchor_text": "Nvidia GTC robotics keynote"})  # 4 words
+    assert headline > prose, (
+        f"Headline score {headline} should beat prose score {prose} at equal path depth"
+    )
+
+
+def test_score_source_short_anchor_uncapped():
+    """A 5-word anchor returns anchor_score=5 (not penalized, at or below cap)."""
+    score = _score_source({"url": "https://example.com/a", "anchor_text": "Nvidia GTC robotics keynote"})  # 4 words
+    assert score[1] == 4
+
+
+def test_score_source_boundary_at_seven_words():
+    """Exactly 7 words → anchor_score=7 (boundary is inclusive). 8 words → anchor_score=0."""
+    url = "https://example.com/a"
+    assert _ANCHOR_IDEAL_MAX_WORDS == 7, "Boundary test assumes threshold of 7"
+    at_boundary = _score_source({"url": url, "anchor_text": "one two three four five six seven"})
+    over_boundary = _score_source({"url": url, "anchor_text": "one two three four five six seven eight"})
+    assert at_boundary[1] == 7, f"Expected 7 at boundary, got {at_boundary[1]}"
+    assert over_boundary[1] == 0, f"Expected 0 over boundary, got {over_boundary[1]}"
+
+
+def test_score_source_path_depth_still_primary():
+    """A penalized prose anchor at path_depth=3 beats an unpenalized short anchor at path_depth=2."""
+    prose_deep = _score_source({
+        "url": "https://example.com/a/b/c",  # depth=3
+        "anchor_text": "small robots that looked like they came straight out of WALL-E",  # 14w → score 0
+    })
+    headline_shallow = _score_source({
+        "url": "https://example.com/a/b",  # depth=2
+        "anchor_text": "Nvidia GTC keynote",  # 3w → score 3
+    })
+    assert prose_deep > headline_shallow, (
+        f"Deeper path {prose_deep} should beat shallower even when anchor is penalized; "
+        f"got prose_deep={prose_deep}, headline_shallow={headline_shallow}"
+    )
