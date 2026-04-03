@@ -4,7 +4,7 @@ import email
 import re
 import email.utils
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 from email import policy
 from urllib.parse import urlparse, urlunparse, urlencode, parse_qs
@@ -78,9 +78,10 @@ _BOILERPLATE_ANCHOR_SUBSTRINGS = (
 )
 
 _SECTION_SPLIT_PATTERN = re.compile(r'\n{2,}|^\s*[-*_]{3,}\s*$', re.MULTILINE)
-_MIN_SECTION_CHARS = 100
+_MIN_SECTION_CHARS = 20     # low floor: skip only empty/whitespace sections; short valid story
+                             # items must not be dropped here — the LLM filter handles noise
 _MIN_LIST_ITEM_CHARS = 30   # lower threshold for individual bullet items (job listings etc.)
-_MD_LINK_RE = re.compile(r'\[([^\]]+)\]\((https?://[^\)]+)\)')
+_MD_LINK_RE = re.compile(r'\[([^\]]*)\]\((https?://[^\)]+)\)')
 _LIST_ITEM_START = re.compile(r'^\s*[\*\-]\s+', re.MULTILINE)
 
 # Tracking/analytics query parameters stripped during URL normalization.
@@ -134,6 +135,11 @@ _BOILERPLATE_SEGMENT_SIGNALS = (
     "forward this email",
     "share this newsletter",
     "recommend this newsletter",
+    # Newsletter intro / table-of-contents headers
+    "in today's issue",
+    "in this issue",
+    "what's inside",
+    "today's top stories",
 )
 
 
@@ -207,19 +213,54 @@ def _is_boilerplate_link(url: str, anchor_text: str) -> bool:
 
 
 @dataclass
-class ParsedEmail:
-    subject: str
-    sender: str           # Display name from From header, or email address if no display name
-    date: datetime | None # Parsed from Date header; None if missing or unparseable
-    body: str             # Cleaned plain text; empty string if extraction failed
-    links: list[dict] = field(default_factory=list)  # always empty — links are section-local; see sections field
-    sections: list[dict] = field(default_factory=list)  # [{text, links}] — per-section, preferred
+class StoryRecord:
+    title: str | None    # first #-heading line, stripped of # markers; None if absent
+    body: str            # section text without the title line; primary dedup signal
+    link: str | None     # first non-boilerplate URL from the section; None if absent
+    newsletter: str      # sender display name or email address
+    date: str            # YYYY-MM-DD; empty string if email Date header missing/unparseable
 
 
 def _is_boilerplate_segment(text: str) -> bool:
     """Return True if this text segment is sponsor or shell content, not a news story."""
     text_lower = text.lower()
     return any(signal in text_lower for signal in _BOILERPLATE_SEGMENT_SIGNALS)
+
+
+def _is_table_artifact(clean_text: str) -> bool:
+    """Return True if text is a formatting artifact rather than story content.
+
+    Detects email template table rows where pipe characters dominate — e.g.
+    '| | | | March 17, 2026 | Read online'. These are layout elements that
+    survive the _MIN_SECTION_CHARS floor but contain no story content.
+
+    Threshold: pipe chars > 15% of all non-whitespace characters.
+    """
+    non_ws = re.sub(r'\s', '', clean_text)
+    if not non_ws:
+        return True
+    return non_ws.count('|') / len(non_ws) > 0.15
+
+
+_SPARSE_LINK_STRIP_RE = re.compile(r'\[([^\]]*)\]\([^\)]+\)|[\d\.\-\*\#\:\s]')
+
+
+def _is_sparse_link_section(raw_sec: str, links: list[dict]) -> bool:
+    """Return True if this section is a link list (ToC, preview) with minimal prose.
+
+    Detects sections where the text outside link syntax consists only of list
+    markers and whitespace — i.e. the section IS the links, with no prose around
+    them. Requires at least 3 links to avoid false-positives on short story items
+    that happen to have minimal surrounding text.
+
+    Does not affect story sections with inline links — those always have
+    substantial prose outside the link anchors.
+    """
+    if len(links) < 3:
+        return False
+    # Strip all link syntax (including empty anchors) and list markers/whitespace
+    bare = _SPARSE_LINK_STRIP_RE.sub('', raw_sec)
+    return len(bare) < 30
 
 
 def _is_heading_only(text: str) -> bool:
@@ -234,6 +275,40 @@ def _is_heading_only(text: str) -> bool:
     if not lines:
         return True
     return all(l.startswith('#') for l in lines)
+
+
+def _extract_title(text: str) -> tuple[str | None, str]:
+    """Extract a heading title from section text.
+
+    If the first non-empty line begins with one or more '#' characters (markdown
+    heading), it is treated as the title. Returns (title_text, body_without_title).
+    Otherwise returns (None, original_text).
+
+    The '#' markers and leading/trailing whitespace are stripped from the title.
+    The returned body is the text after the title line with leading blank lines removed.
+    """
+    lines = text.split("\n")
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        if not stripped:
+            continue
+        if stripped.startswith("#"):
+            title = stripped.lstrip("#").strip()
+            body = "\n".join(lines[i + 1:]).lstrip("\n").strip()
+            return title or None, body
+        # First non-empty line is not a heading
+        break
+    return None, text
+
+
+def _select_link(links: list[dict]) -> str | None:
+    """Return the first URL from a section's filtered links list, or None if empty.
+
+    The links list is already boilerplate-filtered by _extract_sections() — every
+    entry is a non-boilerplate, non-social URL. The first entry is selected as the
+    representative link for this story record.
+    """
+    return links[0]["url"] if links else None
 
 
 def _split_list_section(sec: str) -> list[dict] | None:
@@ -268,6 +343,8 @@ def _split_list_section(sec: str) -> list[dict] | None:
     for raw in items_raw:
         best_by_norm: dict[str, dict] = {}
         for anchor, url in _MD_LINK_RE.findall(raw):
+            if not anchor:              # skip empty-anchor image links
+                continue
             if _is_boilerplate_url(url):
                 continue
             norm = _normalize_url(url)
@@ -339,6 +416,8 @@ def _extract_sections(html_text: str) -> list[dict]:
         # When multiple links share the same normalized destination, keep the longest anchor text.
         best_by_norm: dict[str, dict] = {}
         for anchor, url in _MD_LINK_RE.findall(sec):
+            if not anchor:              # skip empty-anchor image links
+                continue
             if _is_boilerplate_url(url):
                 continue
             norm = _normalize_url(url)
@@ -348,10 +427,15 @@ def _extract_sections(html_text: str) -> list[dict]:
                 best_by_norm[norm]["anchor_text"] = anchor
         links = list(best_by_norm.values())
 
+        if _is_sparse_link_section(sec, links):
+            continue
+
         # Strip markdown link syntax to get clean prose
         clean_text = _MD_LINK_RE.sub(r'\1', sec).strip()
 
         if len(clean_text) < _MIN_SECTION_CHARS:
+            continue
+        if _is_table_artifact(clean_text):
             continue
         if _is_boilerplate_segment(clean_text):
             continue
@@ -400,33 +484,36 @@ def _html_to_text(html_str: str) -> str:
     return h.handle(html_str)
 
 
-def parse_emails(raw_messages: list[bytes]) -> list[ParsedEmail]:
-    """Parse raw MIME email bytes into structured ParsedEmail objects.
+def parse_emails(raw_messages: list[bytes]) -> list[StoryRecord]:
+    """Parse raw MIME email bytes into a flat list of StoryRecord objects.
+
+    Each record represents one story section extracted from one email. Sections are
+    produced by _extract_sections() which handles HTML conversion, boilerplate filtering,
+    and bullet-list splitting internally.
 
     Args:
         raw_messages: List of raw MIME email byte strings, as returned by fetch_emails().
 
     Returns:
-        List of ParsedEmail instances. Emails with no extractable body are silently skipped.
+        Flat list of StoryRecord instances. Emails with no extractable body or no
+        sections are silently skipped. The list is ordered: all sections from the
+        first email, then all sections from the second, etc.
     """
-    results: list[ParsedEmail] = []
+    results: list[StoryRecord] = []
 
     for raw in raw_messages:
         msg = email.message_from_bytes(raw, policy=policy.default)
 
-        # Subject — policy.default decodes RFC 2047 encoded headers automatically
-        subject = msg.get("Subject", "") or ""
-
         # Sender — prefer display name, fall back to email address
         display_name, addr = email.utils.parseaddr(msg.get("From", ""))
-        sender = display_name.strip() if display_name.strip() else addr
+        newsletter = display_name.strip() if display_name.strip() else addr
 
-        # Date — gracefully handle missing or malformed Date headers
-        date_parsed: datetime | None = None
+        # Date — format as YYYY-MM-DD; empty string if header missing or unparseable
+        date_formatted = ""
         date_str = msg.get("Date")
         if date_str:
             try:
-                date_parsed = email.utils.parsedate_to_datetime(date_str)
+                date_formatted = email.utils.parsedate_to_datetime(date_str).strftime("%Y-%m-%d")
             except (TypeError, ValueError):
                 pass
 
@@ -436,45 +523,46 @@ def parse_emails(raw_messages: list[bytes]) -> list[ParsedEmail]:
         sections: list[dict] = []
 
         if plain_text is not None:
-            body = plain_text
-            # Extract sections from HTML part if present alongside plain text
+            # Extract sections from HTML part if available alongside plain text
             if html_text is not None:
                 try:
                     sections = _extract_sections(html_text)
                 except Exception:
                     sections = []
+            # Plain-text-only emails produce no sections — skipped silently
         elif html_text is not None:
             soup = BeautifulSoup(html_text, "lxml")
             _strip_noise(soup)
-            body = _html_to_text(str(soup))
+            raw_body = _html_to_text(str(soup)).strip()
+            if not raw_body:
+                continue
+            if len(raw_body) < 200:
+                logger.warning(
+                    "Short extraction (%d chars) for email from %s — possible parse failure",
+                    len(raw_body),
+                    newsletter,
+                )
             try:
                 sections = _extract_sections(html_text)
             except Exception:
                 sections = []
         else:
-            body = ""
+            continue  # no body at all
 
-        body = body.strip()
-
-        if not body:
-            continue
-
-        if len(body) < 200:
-            logger.warning(
-                "Short extraction (%d chars) for email from %s — possible parse failure",
-                len(body),
-                sender,
-            )
-
-        results.append(
-            ParsedEmail(
-                subject=subject,
-                sender=sender,
-                date=date_parsed,
+        for section in sections:
+            section_text = section.get("text", "").strip()
+            if not section_text:
+                continue
+            title, body = _extract_title(section_text)
+            if not body.strip():
+                body = section_text  # fallback: use full text if title stripped everything
+            link = _select_link(section.get("links", []))
+            results.append(StoryRecord(
+                title=title,
                 body=body,
-                links=[],    # links are section-local; see sections field
-                sections=sections,
-            )
-        )
+                link=link,
+                newsletter=newsletter,
+                date=date_formatted,
+            ))
 
     return results

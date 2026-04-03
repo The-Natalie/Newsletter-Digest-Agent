@@ -3,6 +3,20 @@ description: Execute an implementation plan
 argument-hint: [path-to-plan]
 ---
 
+## Execution Log Capture
+
+Create the execution report file before starting any tasks.
+
+Write the full verbatim output of the entire execution to `.agents/execution-reports/<timestamp>-<plan-name>.md` as you go — every command run, every line of test output, every validation result exactly as printed, every deviation or issue encountered.
+
+Do not summarize. Do not shorten. Do not omit anything.
+
+In the terminal, only print:
+- the path to the report file
+- a one-line status (e.g. "34/34 tests passing, ready for /commit")
+
+---
+
 # Execute: Implement from Plan
 
 ## Plan to Execute
@@ -74,31 +88,21 @@ Before completing:
 - ✅ Code follows project conventions
 - ✅ Documentation added/updated as needed
 
-## Output Report
+## End of Report Checklist
 
-Provide summary:
+At the end of the execution report file, append:
 
-### Completed Tasks
-- List of all tasks completed
-- Files created (with paths)
-- Files modified (with paths)
-
-### Tests Added
-- Test files created
-- Test cases implemented
-- Test results
-
-### Validation Results
-```bash
-# Output from each validation command
 ```
-- Do not claim success without showing validation evidence
+## Ready for Commit
 
-### Ready for Commit
-- Confirm all changes are complete
-- Confirm all validations pass
-- Ready for `/commit` command
-- Follow-up items, if any
+- [ ] All tasks completed
+- [ ] All validation commands passed
+- [ ] All tests passing
+
+## Follow-up Items
+
+- (any deviations, edge cases, or items deferred from this execution)
+```
 
 ## Notes
 
@@ -106,19 +110,3 @@ Provide summary:
 - If you need to deviate from the plan, explain why
 - If tests fail, fix implementation until they pass
 - Don't skip validation steps
-
-
-## Execution Log Capture
-
-During execution, do not rely on terminal output alone.
-
-In addition to the normal Output Report, write your full intended terminal output to a file in `execute-output/`.
-File naming: `<timestamp>-<plan-name>.md`
-
-Do not summarize the output. Do not shorten it. Do not omit anything.
-
-The file should contain the same execution output you would otherwise print to the terminal in full.
-
-In the terminal, only print:
-- the path to the saved file
-- a brief status summary

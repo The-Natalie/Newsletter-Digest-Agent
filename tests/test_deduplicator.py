@@ -4,247 +4,168 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from processing.embedder import StoryChunk
-from processing.deduplicator import _build_sources, _is_cta_link, _score_source, _ANCHOR_IDEAL_MAX_WORDS
+from ingestion.email_parser import StoryRecord
+from processing.deduplicator import select_representative, deduplicate
 
 
-def _chunk(sender: str, links: list[dict]) -> StoryChunk:
-    return StoryChunk(text="test text", sender=sender, links=links)
+def _record(
+    body: str,
+    title: str | None = None,
+    link: str | None = None,
+    newsletter: str = "Test Newsletter",
+    date: str = "2026-03-17",
+) -> StoryRecord:
+    """Build a minimal StoryRecord for testing."""
+    return StoryRecord(title=title, body=body, link=link, newsletter=newsletter, date=date)
 
 
-def test_single_chunk_single_link():
-    """Single chunk with one link — that link is returned."""
-    cluster = [_chunk("TLDR AI", [{"url": "https://example.com/story", "anchor_text": "Story Headline"}])]
-    result = _build_sources(cluster)
+# ---------------------------------------------------------------------------
+# select_representative — selection priority tests
+# ---------------------------------------------------------------------------
+
+def test_single_item_cluster_returns_that_item():
+    """Single-item cluster → returns the item unchanged (modulo date override)."""
+    r = _record("OpenAI released GPT-5 this week with major reasoning improvements.")
+    result = select_representative([r])
+    assert result.body == r.body
+    assert result.newsletter == r.newsletter
+
+
+def test_longest_body_wins():
+    """Item with the longest body is selected as representative."""
+    short = _record("Short body.")
+    long = _record("This is a much longer body with more detail about the story and its implications.")
+    result = select_representative([short, long])
+    assert result.body == long.body
+
+
+def test_title_breaks_body_tie():
+    """When body lengths are equal, titled item beats untitled item."""
+    no_title = _record("Same length body text here.", title=None)
+    with_title = _record("Same length body text here.", title="Story Headline")
+    result = select_representative([no_title, with_title])
+    assert result.title == "Story Headline"
+
+
+def test_link_breaks_remaining_tie():
+    """When body and title status are equal, linked item beats unlinked item."""
+    no_link = _record("Equal body text here.", title="Headline", link=None)
+    with_link = _record("Equal body text here.", title="Headline", link="https://example.com/story")
+    result = select_representative([no_link, with_link])
+    assert result.link == "https://example.com/story"
+
+
+def test_earliest_date_overrides_representative_date():
+    """Representative's date is set to the earliest date in the cluster."""
+    early = _record("Short body.", date="2026-03-10")
+    late_long = _record(
+        "Much longer body that wins on body length selection criterion.",
+        date="2026-03-17",
+    )
+    result = select_representative([early, late_long])
+    # late_long wins on body length, but date should be earliest in cluster
+    assert result.body == late_long.body
+    assert result.date == "2026-03-10"
+
+
+def test_original_record_not_mutated():
+    """select_representative returns a new StoryRecord and does not mutate inputs."""
+    r1 = _record("Short.", date="2026-03-10")
+    r2 = _record("Much longer body that will be selected.", date="2026-03-17")
+    original_date = r2.date
+    select_representative([r1, r2])
+    assert r2.date == original_date, "Input record must not be mutated"
+
+
+def test_all_empty_dates_preserves_representative_date():
+    """If all dates in cluster are empty strings, representative date is unchanged."""
+    r1 = _record("Short.", date="")
+    r2 = _record("Longer body text that will be selected.", date="")
+    result = select_representative([r1, r2])
+    assert result.date == ""
+
+
+def test_representative_date_from_partial_empty_dates():
+    """If some dates are empty and some are real, earliest real date is used."""
+    no_date = _record("Short body.", date="")
+    has_date = _record("Longer body wins on selection.", date="2026-03-14")
+    result = select_representative([no_date, has_date])
+    assert result.date == "2026-03-14"
+
+
+def test_three_item_cluster_selects_longest():
+    """Three-item cluster selects longest body regardless of order."""
+    r1 = _record("First item, short.")
+    r2 = _record("Second item, medium length body text here.")
+    r3 = _record("Third item with the longest body text by a significant margin, lots of detail.")
+    result = select_representative([r1, r2, r3])
+    assert result.body == r3.body
+
+
+# ---------------------------------------------------------------------------
+# deduplicate — cluster-to-representative mapping tests
+# ---------------------------------------------------------------------------
+
+def test_deduplicate_empty_clusters_returns_empty():
+    """Empty cluster list returns []."""
+    assert deduplicate([]) == []
+
+
+def test_deduplicate_skips_empty_clusters():
+    """Empty sub-clusters are skipped without error."""
+    r = _record("A valid story item with meaningful content.")
+    result = deduplicate([[], [r]])
     assert len(result) == 1
-    assert result[0]["url"] == "https://example.com/story"
-    assert result[0]["newsletter"] == "TLDR AI"
+    assert result[0].body == r.body
 
 
-def test_single_chunk_picks_best_link():
-    """Single chunk with multiple links — best by _score_source is selected."""
-    links = [
-        {"url": "https://example.com/", "anchor_text": "Home"},
-        {"url": "https://example.com/blog/ai-story", "anchor_text": "AI Story Title"},
+def test_deduplicate_single_cluster_single_item():
+    """One cluster with one item → list with that item."""
+    r = _record("Nvidia announced new robotics platforms at GTC 2026.")
+    result = deduplicate([[r]])
+    assert len(result) == 1
+    assert result[0].body == r.body
+
+
+def test_deduplicate_single_cluster_multiple_items():
+    """One cluster with duplicates → one representative."""
+    r1 = _record("Short duplicate.")
+    r2 = _record("Longer duplicate with more content about the same story event.")
+    result = deduplicate([[r1, r2]])
+    assert len(result) == 1
+    assert result[0].body == r2.body
+
+
+def test_deduplicate_multiple_clusters_one_per_cluster():
+    """Multiple clusters each yield one representative — count matches cluster count."""
+    cluster_a = [_record("Story A content, fairly detailed description of events.")]
+    cluster_b = [_record("Story B content, different topic with its own details.")]
+    cluster_c = [_record("Story C content, third distinct story item here.")]
+    result = deduplicate([cluster_a, cluster_b, cluster_c])
+    assert len(result) == 3
+
+
+def test_deduplicate_returns_story_records():
+    """deduplicate() returns a list of StoryRecord instances."""
+    r = _record("OpenAI released a new model with improved reasoning.")
+    result = deduplicate([[r]])
+    assert all(isinstance(item, StoryRecord) for item in result)
+
+
+def test_deduplicate_date_override_propagates():
+    """Earliest date in cluster appears on the returned representative."""
+    early = _record("Short.", newsletter="Newsletter A", date="2026-03-10")
+    late_long = _record("Longer body that wins on selection.", newsletter="Newsletter B", date="2026-03-17")
+    result = deduplicate([[early, late_long]])
+    assert len(result) == 1
+    assert result[0].date == "2026-03-10"
+
+
+def test_deduplicate_large_cluster_no_exception():
+    """A cluster with more than 5 items does not raise — warning logged but processing continues."""
+    cluster = [
+        _record(f"Story item {i} with enough body text to be valid.", date=f"2026-03-{10 + i:02d}")
+        for i in range(7)
     ]
-    cluster = [_chunk("AI Newsletter", links)]
-    result = _build_sources(cluster)
+    result = deduplicate([cluster])
     assert len(result) == 1
-    # /blog/ai-story has path_depth=2; example.com/ has depth=0 — deeper wins
-    assert result[0]["url"] == "https://example.com/blog/ai-story"
-
-
-def test_two_chunks_independent_attribution():
-    """Two chunks each contribute their own best link — no cross-contamination."""
-    story_chunk = _chunk(
-        "AI Weekly",
-        [{"url": "https://example.com/ai-chip-story", "anchor_text": "New AI chip breaks records"}],
-    )
-    sponsor_chunk = _chunk(
-        "TLDR AI",
-        [{"url": "https://tracking.example.com/CL0/sponsor",
-          "anchor_text": "Google Cloud x NVIDIA: Engineering the Future of AI (Sponsor)"}],
-    )
-    result = _build_sources([story_chunk, sponsor_chunk])
-    assert len(result) == 2
-    by_newsletter = {s["newsletter"]: s["url"] for s in result}
-    assert by_newsletter["AI Weekly"] == "https://example.com/ai-chip-story"
-    assert by_newsletter["TLDR AI"] == "https://tracking.example.com/CL0/sponsor"
-
-
-def test_duplicate_url_across_chunks_deduplicated():
-    """If two chunks link to the same URL, it appears only once."""
-    url = "https://example.com/shared-story"
-    chunk_a = _chunk("Newsletter A", [{"url": url, "anchor_text": "Story A"}])
-    chunk_b = _chunk("Newsletter B", [{"url": url, "anchor_text": "Story B"}])
-    result = _build_sources([chunk_a, chunk_b])
-    assert len(result) == 1
-    assert result[0]["url"] == url
-
-
-def test_chunk_with_no_links_skipped():
-    """Chunks with no links are skipped; only chunks with links contribute sources."""
-    chunk_no_links = _chunk("Newsletter A", [])
-    chunk_with_link = _chunk("Newsletter B", [{"url": "https://example.com/story", "anchor_text": "Story"}])
-    result = _build_sources([chunk_no_links, chunk_with_link])
-    assert len(result) == 1
-    assert result[0]["newsletter"] == "Newsletter B"
-
-
-def test_all_chunks_no_links_returns_empty():
-    """Cluster where no chunk has links returns [] (sourceless — will be dropped)."""
-    cluster = [_chunk("Newsletter A", []), _chunk("Newsletter B", [])]
-    result = _build_sources(cluster)
-    assert result == []
-
-
-def test_empty_cluster_returns_empty():
-    """Empty cluster returns []."""
-    assert _build_sources([]) == []
-
-
-def test_sponsor_anchor_does_not_steal_story_link():
-    """
-    Core regression: sponsor anchor with longer text does not replace story link
-    from a different chunk. Per-chunk selection prevents cross-contamination.
-    """
-    story_chunk = _chunk(
-        "The Batch",
-        [{"url": "https://deeplearning.ai/the-batch/issue-123", "anchor_text": "New model release"}],
-    )
-    sponsor_chunk = _chunk(
-        "The Batch",
-        [{"url": "https://tracking.tldrnewsletter.com/CL0/sponsor/1/abc",
-          "anchor_text": "Google Cloud x NVIDIA: Engineering the Future of AI (Sponsor) — Register Free"}],
-    )
-    result = _build_sources([story_chunk, sponsor_chunk])
-    urls = [s["url"] for s in result]
-    assert "https://deeplearning.ai/the-batch/issue-123" in urls
-    assert "https://tracking.tldrnewsletter.com/CL0/sponsor/1/abc" in urls
-
-
-# ---------------------------------------------------------------------------
-# CTA anchor filter tests
-# ---------------------------------------------------------------------------
-
-def test_is_cta_link_demo_signal():
-    """'Try a demo' anchor is classified as CTA."""
-    assert _is_cta_link({"anchor_text": "Want to test Airia enterprise AI for yourself? Try a demo right here."})
-
-
-def test_is_cta_link_learn_more():
-    """'Learn more' anchor is classified as CTA."""
-    assert _is_cta_link({"anchor_text": "Learn more about our platform"})
-
-
-def test_is_cta_link_share_thoughts():
-    """'Share your thoughts' anchor is classified as CTA."""
-    assert _is_cta_link({"anchor_text": " Other (share your thoughts) "})
-
-
-def test_is_cta_link_terms():
-    """'Terms of service' anchor is classified as CTA."""
-    assert _is_cta_link({"anchor_text": "Terms of Service"})
-
-
-def test_is_cta_link_story_not_filtered():
-    """A real story headline is not classified as CTA."""
-    assert not _is_cta_link({"anchor_text": "New AI chip breaks records in benchmark tests"})
-
-
-def test_is_cta_link_case_insensitive():
-    """CTA detection is case-insensitive."""
-    assert _is_cta_link({"anchor_text": "LEARN MORE"})
-
-
-def test_cta_link_not_selected_when_story_link_present():
-    """Within a chunk, CTA link is skipped and story link is selected instead."""
-    links = [
-        {"url": "https://example.com/ai-story", "anchor_text": "New AI model beats GPT-4"},
-        {"url": "https://example.com/demo", "anchor_text": "Try a demo right here."},
-    ]
-    cluster = [_chunk("The Deep View", links)]
-    result = _build_sources(cluster)
-    assert len(result) == 1
-    assert result[0]["url"] == "https://example.com/ai-story"
-
-
-def test_cta_fallback_when_all_links_are_ctas():
-    """If every link in a chunk is a CTA, fall back to unfiltered selection (do not drop chunk)."""
-    links = [
-        {"url": "https://example.com/demo", "anchor_text": "Try a demo"},
-        {"url": "https://example.com/more", "anchor_text": "Learn more"},
-    ]
-    cluster = [_chunk("Newsletter A", links)]
-    result = _build_sources(cluster)
-    # Should return one result (fallback to best of CTAs) rather than empty
-    assert len(result) == 1
-
-
-def test_legitimate_sponsor_with_descriptive_anchor_kept():
-    """A sponsor link with a descriptive, non-CTA anchor is NOT filtered."""
-    links = [
-        {"url": "https://sponsor.com/report-2026", "anchor_text": "Download the 2026 AI State of the Industry Report"},
-    ]
-    cluster = [_chunk("TLDR AI", links)]
-    result = _build_sources(cluster)
-    assert len(result) == 1
-    assert result[0]["url"] == "https://sponsor.com/report-2026"
-
-
-# ---------------------------------------------------------------------------
-# CTA anchor filter — gap coverage (Loop 9D additions)
-# ---------------------------------------------------------------------------
-
-def test_cta_watch_now_filtered():
-    """'Watch now' is classified as a CTA — was missing from _CTA_ANCHOR_SIGNALS."""
-    assert _is_cta_link({"anchor_text": "Watch now"})
-
-
-def test_cta_watch_now_case_insensitive():
-    """'WATCH NOW' (all caps) is also classified as CTA — detection is case-insensitive."""
-    assert _is_cta_link({"anchor_text": "WATCH NOW"})
-
-
-def test_cta_get_the_report_filtered():
-    """'get the report' is classified as a CTA lead-gen pattern."""
-    assert _is_cta_link({"anchor_text": "get the report"})
-
-
-def test_cta_see_it_in_action_filtered():
-    """'see it in action' is classified as a CTA demo/interactive pattern."""
-    assert _is_cta_link({"anchor_text": "See it in action"})
-
-
-# ---------------------------------------------------------------------------
-# _score_source anchor word-count cap tests (Loop 9D — Phase 4)
-# Confirmed against actual Deep View diagnostic output (Task 8).
-# ---------------------------------------------------------------------------
-
-def test_score_source_prose_anchor_penalized():
-    """A 14-word in-text prose anchor (WALL-E case) returns anchor_score=0."""
-    anchor = "small robots that looked like they came straight out of WALL-E"
-    score = _score_source({"url": "https://example.com/a/b/c", "anchor_text": anchor})
-    assert score[1] == 0, f"Expected anchor_score=0 for 14-word anchor, got {score[1]}"
-
-
-def test_score_source_headline_beats_prose_at_same_depth():
-    """A 5-word headline outscores a 14-word prose anchor when path depth is equal."""
-    url = "https://example.com/robots/keynote/video"  # path_depth=3 for both
-    prose = _score_source({"url": url, "anchor_text": "small robots that looked like they came straight out of WALL-E"})
-    headline = _score_source({"url": url, "anchor_text": "Nvidia GTC robotics keynote"})  # 4 words
-    assert headline > prose, (
-        f"Headline score {headline} should beat prose score {prose} at equal path depth"
-    )
-
-
-def test_score_source_short_anchor_uncapped():
-    """A 5-word anchor returns anchor_score=5 (not penalized, at or below cap)."""
-    score = _score_source({"url": "https://example.com/a", "anchor_text": "Nvidia GTC robotics keynote"})  # 4 words
-    assert score[1] == 4
-
-
-def test_score_source_boundary_at_seven_words():
-    """Exactly 7 words → anchor_score=7 (boundary is inclusive). 8 words → anchor_score=0."""
-    url = "https://example.com/a"
-    assert _ANCHOR_IDEAL_MAX_WORDS == 7, "Boundary test assumes threshold of 7"
-    at_boundary = _score_source({"url": url, "anchor_text": "one two three four five six seven"})
-    over_boundary = _score_source({"url": url, "anchor_text": "one two three four five six seven eight"})
-    assert at_boundary[1] == 7, f"Expected 7 at boundary, got {at_boundary[1]}"
-    assert over_boundary[1] == 0, f"Expected 0 over boundary, got {over_boundary[1]}"
-
-
-def test_score_source_path_depth_still_primary():
-    """A penalized prose anchor at path_depth=3 beats an unpenalized short anchor at path_depth=2."""
-    prose_deep = _score_source({
-        "url": "https://example.com/a/b/c",  # depth=3
-        "anchor_text": "small robots that looked like they came straight out of WALL-E",  # 14w → score 0
-    })
-    headline_shallow = _score_source({
-        "url": "https://example.com/a/b",  # depth=2
-        "anchor_text": "Nvidia GTC keynote",  # 3w → score 3
-    })
-    assert prose_deep > headline_shallow, (
-        f"Deeper path {prose_deep} should beat shallower even when anchor is penalized; "
-        f"got prose_deep={prose_deep}, headline_shallow={headline_shallow}"
-    )
