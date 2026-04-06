@@ -1,0 +1,282 @@
+Total story records: 40
+================================================================================
+[1]
+title      = None
+date       = 2026-03-17
+newsletter = 'The Deep View'
+link       = https://elink983.thedeepview.co/ss/c/u001.wZPohD0JH12EksCsbt8ZeFCsxgaiiSFhhEZXgbyLVQFhr1A_BEAEp8cdvWudcCyss9zA-ck9db_DlffwGgC6GkvgY4ddaq81wTLdw5-Rvc-LKogiay9cxE_pXnVW6unCRFHIoAQXJl7SUNdLQ3r6TijdQovUHIHwIc51TAx5KVRKZYz8lDEzpCperNMdMC9xeaeL3Q06_apft0hBUXDxeLIT6nHrkZW5yb2rz1BFo3QhZB5UHsAnYLPsd_vuatdxKWHtq2InoxZ5tH60vNNSYQ/4p0/glskTz_WTz6agzZ_UAQ3kg/h2/h001.Bl8Rgf7_TFj7XsfE5UTsJyaDiDStmlhLelfV4kKZ5Qg
+body       = '**Welcome back.** Nvidia announced several new bets on Monday at GTC 2026. In space, it\'s pushing AI compute to the edge, enabling orbital hardware to process data in real time instead of sending it back to Earth. On the ground, it\'s positioning itself in the center of the robotics era, building the full stack for physical AI without making its own robots. Meanwhile, OpenAI is sharpening its enterprise strategy, working with private equity firms to embed its technology across large portfolios of companies. It\'s also pulling back on "side quests" and doubling down on AI that can help professionals do work. Look for more Nvidia GTC coverage tomorrow as our team meets with more of the AI builders who are driving the industry forward. _—_ _Jason Hiner_  \n**IN TODAY’S NEWSLETTER**  \n  \n##  1. Nvidia builds the tech stack for the robotics era  \n  \n## 2. Nvidia unveils a different vision of AI-in-space  \n  \n## 3. OpenAI expands its enterprise AI plans  \n  \n|'
+--------------------------------------------------------------------------------
+[2]
+title      = None
+date       = 2026-03-17
+newsletter = 'The Deep View'
+link       = https://elink983.thedeepview.co/ss/c/u001.wZPohD0JH12EksCsbt8ZeFCsxgaiiSFhhEZXgbyLVQFXJHD1zWMk8_DOQ7OOQ7fYiIIhjWx_OoO3LmVVN3cEvCPX3WWX7CXsDAEgZGbtkfsTiEoDP1uF2BD4KKqTvJIkDqihKuf5hghCmXYozNn0n58K050UE9w12PtsEwXwnjTHkMIqujacvvPgd6ZHdyyjYTKNIHoz6fm4xkSjc9sUIgm-4vO1o9BW-3plOBXatudrRFepfqWEM7aPKiBQ6G_7dpELH1FVbFuysXcBtvWLA3z9svxmWuJ-SnUTNmSdhpOSN8-M5KXL78v2xFOG0qyGIkDIzBvWiA78lJ5zJonsug/4p0/glskTz_WTz6agzZ_UAQ3kg/h4/h001.oFCjwmD0spJAf0Ch2_-SAxFfRptQabpHw1IvVI36ufE
+body       = 'Nvidia is betting on robots, without actually building any robots.   \nOn Monday, CEO Jensen Huang unveiled a flood of physical AI offerings and partnerships, spanning self-driving cars, world models, humanoids and data itself, in his keynote at the company’s annual GTC conference in San Jose. The headline? The ChatGPT moment for physical and embodied AI is here, and Nvidia wants to build its foundation.   \n“Physical AI has arrived — every industrial company will become a robotics company,” Huang said. “NVIDIA’s full-stack platform … is the foundation for the robotics industry.”   \nHere are the highlights:   \n  \n  * **Autonomous vehicles:** Nvidia announced Alpamayo 1.5, the latest iteration of the company’s platform built for “reasoning-based” autonomous vehicles. Nvidia debuted the original Alpamayo at CES in January, and since its launch, it has seen 150,000 downloads since its debut. Nvidia also unveiled Halos OS, a “safety foundation” for self-driving vehicles. Additionally, Nvidia announced a partnership with Uber to deploy its technology in robotaxis in 28 markets by 2028. \n  * **Data pipelines:** The company unveiled the Physical AI Data Factory Blueprint, its fix to the biggest bottleneck facing physical AI development. This is an architecture that automates the generation and evaluation of training data, using its Cosmos world models and coding agents to broaden and diversify limited datasets. It’s already in use by several physical AI developers, including Hexagon Robotics, Skild AI and Uber.****\n  * **Robotics:** Nvidia released editions to its Cosmos world models, Isaac simulation framework and GR00T humanoid models. It also announced partnerships with more than a dozen robotics and physical AI companies, including ABB Robotics, Figure and World Labs, to support “production-scale physical AI.”****'
+--------------------------------------------------------------------------------
+[3]
+title      = None
+date       = 2026-03-17
+newsletter = 'The Deep View'
+link       = https://elink983.thedeepview.co/ss/c/u001.7zYFXt5AA3Px2NyJbPz6hBo2vqaEkV8hiq1yJoYrfYS6G8Zve5TOfv_WWqcUsUkwzvaJqH2mEixllVla_NlVftJXe-mG58XQDe2RNocwWKPOyuGui6dCgKG4ImJPF4qwulDy7sEp_hO_LzocCU5lOoQtFAhjQ-ShUdchj3flTsK7qavE0K1SFAzuzu5P3SOP4z2OWiOTaEzuJv3YMDxB8O9jfGKjaKURr5X9ag7dvRwX6PPceo5Hy2MRGfvHTi7SvFCZ2CE1ZoYEp_wbyihSP020Kj6auyoPZMfGR1fB2ZA/4p0/glskTz_WTz6agzZ_UAQ3kg/h5/h001.IKCDK4Z6JVM2KoPyeJ-tktIOQf9wr9B_BqEDosyn_I0
+body       = 'This isn’t the first time in recent history that Huang has proclaimed AI’s future lies in the real world. After a CES keynote where he was flanked by small robots that looked like they came straight out of WALL-E, Huang told reporters that the speed of development could lead to robots with human-level capabilities as soon as “next year.” Now, Nvidia is putting its money where its mouth is.   \n|'
+--------------------------------------------------------------------------------
+[4]
+title      = None
+date       = 2026-03-17
+newsletter = 'The Deep View'
+link       = https://elink983.thedeepview.co/ss/c/u001.QRzVxe4KizzE9qem0b9Kz2Nwy4TNiK52c38o0PPH6TCJV5GTb1iMJvM9RoGOUf6_0hhCxZwitnRHiqgQjpvJ4OsrV-DfaFkqhjpNBodwNxEeDGKj4i_zqvEHt8Fvs0qkt22rnI1sU9jP1a36pplWumMttG8lnPUBDEYkkPdVMA8uoHwi84pJKicZ7vvy__3WGD9bqAFpOxlIiwKFP8BMq3ipyA7nEHv0opnOj1YFp3AJCkF2SMlbUmapiSlCx2aqbM6MH5fWOHwMv_WeKBcySwQ3s7r1vrm1cCFrE0E0f54/4p0/glskTz_WTz6agzZ_UAQ3kg/h7/h001.ivB9mnx5ZGyHyEUr3_loN7rX3-Bt-exSnv2bWeMmvaU
+body       = 'GTC COVERAGE BROUGHT TO YOU BY IREN  \n  \n# Unleashing NVIDIA Blackwell Performance on IREN Cloud™  \n  \nIREN’s Prince George data center campus is capable of housing over 20k NVIDIA Blackwell and Blackwell Ultra GPUs, and they are constructing a new 10 MW (IT load) liquid-cooled data center to support NVIDIA GB300 NVL72 deployments, capable of handling more than 4.5k GPUs.   \nSupported by IREN’s vertically integrated platform, this installation is part of a broader 4.5 GW power portfolio, offering customers a scalable environment, optimized to run the most complex AI models with confidence. Learn more.   \n|'
+--------------------------------------------------------------------------------
+[5]
+title      = None
+date       = 2026-03-17
+newsletter = 'The Deep View'
+link       = None
+body       = "It’s hard to build a robot. Building the actual hardware that powers physical AI is resource-intensive, time-consuming and expensive. So Nvidia is doing everything _but_ actually __ building them. This is a wise approach in a still-nascent market that's heavy on potential and light on products. Along with reducing upfront costs and risk, by providing the foundation for roboticists to build robots, Nvidia is making itself a foundational part of the ecosystem. Rather than competing with other physical AI hardware firms, the company positions itself as the provider of a necessary service for those firms to thrive. And of course, it's Nvidia. It positioned itself in the center of the large language model revolution, and now it’s looking to do the same for AI's next stage.   \n|"
+--------------------------------------------------------------------------------
+[6]
+title      = None
+date       = 2026-03-17
+newsletter = 'The Deep View'
+link       = None
+body       = '| TOGETHER WITH AIRIA'
+--------------------------------------------------------------------------------
+[7]
+title      = None
+date       = 2026-03-17
+newsletter = 'The Deep View'
+link       = https://elink983.thedeepview.co/ss/c/u001.gKxW2KpP8aPe_QMyOQduouWjA1EMfeGgfTYp9mbIg62lbWJft6SK7VeCkX8b0ETV6pTSeZp4NAzbSReb7pfAJhVjvVk0DHlUAKmo85TId-L30xNkQSgbJkuCXsiI5eK44R2FY0OYj6UTBj-Ln87_u5ZgEpJUbF2RGLFWDI0L7Y7J9ddiKjCxzPEBJBW20WT5BCQioX2900nqVekAx7lakA/4p0/glskTz_WTz6agzZ_UAQ3kg/h10/h001.HG9BzpssztJkBfbMTbYA_YOEz2gO02smYL6cyzEwEyc
+body       = 'And, more importantly, want to do it _safely_ and _securely?_ Then you don’t need just any AI platform… you need Airia.   \nAiria is the enterprise AI platform built to offer organizations the best of both worlds – access to the kind of no-code, low-code, and pro-code tools that boost productivity and innovation for your team, while also maintaining the security you need to ensure compliance. The kicker? You can manage all of these features from one central hub, offering simple, seamless control. It’s the perfect platform to future-proof your enterprise with the power of AI… without ever having to worry about any of the security concerns that keep the rest of us up at night.   \nWant to test Airia enterprise AI for yourself? Try a demo right here.  \n\xa0  \n|'
+--------------------------------------------------------------------------------
+[8]
+title      = None
+date       = 2026-03-17
+newsletter = 'The Deep View'
+link       = https://elink983.thedeepview.co/ss/c/u001.wZPohD0JH12EksCsbt8ZeFCsxgaiiSFhhEZXgbyLVQGtXD8o4Wqt4kLAHgzSgStYX1KKD9Ok7yvTqSTAmJlMPPvFoNFIfWJeJSkgzxYJ7akW7p57BFgQ0aCyA3YWFhCdXC1X3KgROBy0B4waRi9vvmma6tSEZ0O1P_2H3dPHoVqap-nbpJhxvmWaG01fRm_zDORqc5Qd35RqfGBw_2Hf4bkqvBH1oI5OyQN-aAEiPgaBtjgjR7rsWVTbnbOT3lOrsnLKk9EShddhR_vlWF1MHY-gEPVrYxXPoWMft4GN0eH6r11ZxfydwdjasKFCbHttLlUadMv41d64NUVq41Fkig/4p0/glskTz_WTz6agzZ_UAQ3kg/h14/h001.CA81YPX01C2TUAf3WYyX8MGPIs49dvHJodYKH02yS94
+body       = "You may have heard of data centers on the ground, but now Nvidia chips are bringing them to space.   \nAt Nvidia GTC on Monday, the company unveiled its first space computing solutions, which, according to Nvidia, will usher in a new era of space innovation by bringing AI compute to orbital data centers (ODCs), geospatial intelligence, and autonomous space operations.   \nNvidia joins Google and SpaceX, which have unveiled plans for putting datacenters and AI factories in space. In fact, SpaceX became the largest private company in the world by acquiring xAI and using space-based data centers as a major synergy of the deal. However, Nvidia is doing something different. It's enabling space-based devices, such as satellites and spacecraft, to process AI workloads in real time without sending the data back to earth-based AI factories.   \n“AI processing across space and ground systems enables real-time sensing, decision-making and autonomy, transforming orbital data centers into instruments of discovery and spacecraft into self-navigating systems,” said Nvidia CEO Jensen Huang.   \nWhile Nvidia’s AI-powered space infrastructure includes existing technologies such as the IGX Thor & Jetson Orin, the Nvidia Vera Rubin Space Module is the latest in Nvidia’s accelerated platforms for space. Highlights include:   \n  \n  * Up to 25x more AI compute for space-based inference than the Nvidia H100 GPU \n  * Large language models and advanced foundation models operate directly in space \n  * Tightly integrated CPU-GPU architecture and high-bandwidth interconnect for processing of a massive data stream from space in real-time"
+--------------------------------------------------------------------------------
+[9]
+title      = None
+date       = 2026-03-17
+newsletter = 'The Deep View'
+link       = None
+body       = "Space is a challenging environment for electronics due to constraints on size, weight, and power (SWaP), requiring systems to be small, lightweight, and to consume minimal power. Nvidia’s infrastructure was designed to meet those specific needs. Space companies, including Aetherflux, Axiom Space, Kepler Communications, Planet, Sophia Space, and Starcloud, are already using Nvidia's platforms for their missions.   \nUnlike traditional satellites that beam raw data back to Earth for processing, space computing enables real-time on-orbit analysis. This is critical for disaster monitoring, environmental hazard tracking, and autonomous operations that don't require waiting on human input from mission control.   \n|"
+--------------------------------------------------------------------------------
+[10]
+title      = None
+date       = 2026-03-17
+newsletter = 'The Deep View'
+link       = None
+body       = 'In the post, Huang says, "intelligence must live wherever data is generated," which brings up a really interesting point. The benefits of processing data with AI on the edge are clear, as there has been a strong emphasis on running AI models on the edge for personal and organizational use cases since AI became mainstream. Local processing unlocks new levels of speed, reliability, security, and more. Now, if you apply that logic to everything, the number of workflows and infrastructure that will need to change is vast, with the most visceral example being something as complex and far-reaching as space.   \n|'
+--------------------------------------------------------------------------------
+[11]
+title      = None
+date       = 2026-03-17
+newsletter = 'The Deep View'
+link       = None
+body       = '| TOGETHER WITH SLACK'
+--------------------------------------------------------------------------------
+[12]
+title      = None
+date       = 2026-03-17
+newsletter = 'The Deep View'
+link       = https://elink983.thedeepview.co/ss/c/u001.MDn7gO0R2GYySjUIwjh9JrC8Puno6NGKvKBix09w8unHBfj3AwwUNyPoi2PEjs1JUUOhcebbL8QZdC337VyUYrrK0GKjNdBTesMbW568DsUAs2hIv4Funh_qy_PEzYcT7RGQersGeU-QKhsPEHtmM5WklGwdPknSExLvso3E2PWWfvyRlD3nld1MMgKQQYHSH6Abr4xW8XKerAYeptA28qVroF_UQoIB71Xk3P63A-pUBaVwt4eUWHGDr04wqZmiysL9k7-ph_E0yfklxUbwcACoPxA2fZbvxUKWgTHjtQlyWXRWXEfNUMlkLNiLjGR3Ug0BO9ZezfHL0te7svJGu6ZorqbW7iS7UkJN_57y1P1OCKj_e0UsL3Mv8PTDqyUpKgYNTuQtcREJ0KhnzPsKDXe7J1W7NTDehewWP9BU5kU9PDBl-Ipp6cyK5dvvw_BpHAuyT40xMxXaW3GnKkBe_NhRd5tYMD8__ZYomo1ySaVDEYJyIuOpghGwvBHG_7ZEC8l04Ps_6I1Utewl2jvTKg/4p0/glskTz_WTz6agzZ_UAQ3kg/h18/h001.T1gUwz9-ZzG9SjutScTMhyE9EOOyJniLMxk-wSgxB3Q
+body       = "Ready to unlock the full potential of your Microsoft 365 investment?   \nWatch our on-demand webinar to see how Slack's open connected platform turns scattered tools into a cohesive, AI-powered ecosystem.   \nYou'll learn strategies for seamless Microsoft 365 integration and see real-world examples of workflow automation in action. Plus, discover how to create an adaptable foundation that scales with emerging technologies and positions your business for future innovation.   \nWatch now  \n\xa0  \n|"
+--------------------------------------------------------------------------------
+[13]
+title      = None
+date       = 2026-03-17
+newsletter = 'The Deep View'
+link       = https://elink983.thedeepview.co/ss/c/u001.wZPohD0JH12EksCsbt8ZeMyyEg56KOMIB6kDHWQ3IF2pKIXEG2Z4rwugqQ-HOt_zYGTg8jPRkczigHy7tt-CQRQnLenODBPlI7LQOZyvmLSlDyrp-BTv-yZgN63IcZd1g_wKpxJXcMIWLddOJeh2qXcYjlHfkfNeuvpvAw-rGkLKGx_E_pXhdj5KaLIg5y9BB3Cff9z2SXcCpKpCej34c04bI5OrjQyErOB-A3DvHL8bUMVOImKlrSm865QBOa0ERLwUnbSniBULliW4lKsoasJMjea0QgsukSPpZsTMDSgaVbcXzELiV1PFBwA_ffF9l4ewg3klVYpsPr_YQe16n3OWY6uuSA96Jtu0g-u2zj4/4p0/glskTz_WTz6agzZ_UAQ3kg/h21/h001.Ef4gvY5e-YPWzzVKYDa1YacNaFFAUBHOCzjMXycNx6c
+body       = 'OpenAI is pushing deeper into enterprise adoption, now courting private equity firms.   \nOn Monday, a Reuters report revealed that OpenAI is in talks with private equity firms TPG, Bain, Brookfield, and Advent to form a joint venture with a pre-money valuation of $10 billion, citing people close to the matter.   \nShortly after the news broke, Fidji Simo, CEO of Applications at OpenAI, confirmed the news, saying OpenAI is “excited to be building a deployment arm and will share more details soon.” The benefits for OpenAI include capturing more enterprise clients, typically a sector in which OpenAI has lagged behind competitors.   \nIn an interview with The Wall Street Journal, Simo said that OpenAI was reducing its "side quests" and experimental projects and dedicating more resources to coding and working with enterprise businesses.   \nIn her X post, Simo said the new deployment arm has been in the works since December and focuses on embedding engineers directly within enterprise clients to enable closer collaboration. The Reuters report provided more information on how the deal would operate, including:   \n  \n  \n  * The private equity investors commit $4 billion in return for equity stakes, a say in how OpenAI’s solutions are deployed across its portfolio companies, board seats and early access to OpenAI’s enterprise tools. \n  * TPG would commit the most capital, serving as the anchor investor, while Advent, Bain, and Brookfield would be co-founding investors. \n  * The firms would get an equity stake of approximately $1 billion, though the source told Reuters the numbers and plan details were subject to change.'
+--------------------------------------------------------------------------------
+[14]
+title      = None
+date       = 2026-03-17
+newsletter = 'The Deep View'
+link       = None
+body       = "“This is essentially part of running a sales motion. It will help them [OpenAI] sell more of their services/tokens,” said Eric Compton, director of equity research, technology at Morningstar.   \nBeyond the benefits listed in the deals, private equity firms also have strategic reasons to participate.   \n“They are 100% motivated to 'not fall behind' and risk not having successful exits for their assets, so having a direct seat at the table in this process will help further that goal in their eyes,” added Compton.   \nSimo highlighted the urgency and demand for AI solutions among enterprises, noting that nearly 1 million businesses are running on OpenAI products, with API usage jumping 20% in the week after GPT-5.4 launched. Furthermore, she said, Frontier, the platform OpenAI launched last month to help enterprises manage AI coworkers, is having more demand than the company can handle.   \n|"
+--------------------------------------------------------------------------------
+[15]
+title      = None
+date       = 2026-03-17
+newsletter = 'The Deep View'
+link       = https://elink983.thedeepview.co/ss/c/u001.wZPohD0JH12EksCsbt8ZeNQV17bivccHNL4Xm_RyIenGFY_V1gMzPU-14RE4YSUVZvue22Z8Ll-WfKLhSf1MUdaQAhekWhq8aoA6eDAdp1jilVPaFpiTTMGqvk9AipPdss22UAKYMwucHh9zFIFeWhFwcYxIwI3n60CzwLBP5_Xr6EGTYgr025mvYHM3sADbMhcC5KC0AUcfnSwUWGYL4MK8X3pQWjfdgh1IcBBIivT1oRTRAP16QpSjCmvlbOIySt0ezKyCcI8o-hFLFDv79SYmDnUruphi91IiaoM9f9tU7-Kh9u3rEakFkovUq7snlxxfek43BPuZdyOSLnxNHWRBhaISyL3etELjHCgCF10/4p0/glskTz_WTz6agzZ_UAQ3kg/h24/h001.RIJjzmjHs7Z-WnLxamJTR2b5ZlcPesAdbUBMPSMbxVM
+body       = 'Portfolios of private equity firms at the scale of the ones above typically hold hundreds of companies each, all of which rely on the firms for decision-making, including software investments. Targeting these firms is therefore a sound strategic move for AI companies, as it guarantees the deployment of their technology across many companies, and OpenAI is not the only one doing so. Last week, The Information reported Anthropic is in talks with Blackstone and other private equity firms to form a similar deal. The timelines and favorable terms of these deals could shake up which companies lead in the enterprise space.   \n|'
+--------------------------------------------------------------------------------
+[16]
+title      = None
+date       = 2026-03-17
+newsletter = 'The Deep View'
+link       = https://elink983.thedeepview.co/ss/c/u001.wZPohD0JH12EksCsbt8ZeMjA5GCbpI9M9CqNlwNyrcJ4UDUaKhkgAefJHHiR-qZolDGi7FRHHxLOz8RsNUb5rxQvyvml1cf-f9tBV-JEIKKU9tKNE2m_0B2UUjlfD43EkCvNTo9xBwwzHJYhN1mhSK99P9FFnJqxPq_Y8pNR7-Sho8nBJwfG5bnbUm7myJKVHQ7KTW_nj2hvnNoIyWM2TdjsGdlADyU2IDzTKZTSvZWqwSXNlJIVM8ZhjPlDqqHQPdqjIAHGkrufbPpXN_4oV9bGOy-DWhFTZcJEzP0ztGOGXXD9bLb56I_1OoE5oymbVIrjEb4B_uFgp4h04uk-yhRLR2BWWN2zbzaP-Wf2FUbRqcizGgHW3JTLeamJuhbpmWFhANh5OvUWpfuBad3E0RnzUaaejJagjawyBFkcgIDKrbxNu4-D0naqZHxQa_brXwZfGpEJIWxN4K8QSSYI2Yy7OizOn1kGFMxSqI2kcQ2CFtrZw4ceDfjWd4Mr61z7IDHsjT04VUm7-u_GMqahiCI2AXLFUtQqPiPfrOBKy-DQ4sJfMOv9IdR36Wu4EeOdWoLMkUjz8FqUYVn7_0WK40wqUx_VLZ72M9lM0YPoYmwKbTV3oro4WoB7a_I-Y9vUPVee8jm3hZiTrF03wIVu7w/4p0/glskTz_WTz6agzZ_UAQ3kg/h26/h001.igAE3H1PSrHVspqBQSOmArwwNSY9AVeZJuRLf_PKTwo
+body       = 'Startup backed by Nvidia, Reflection AI invests billions on Korea data center'
+--------------------------------------------------------------------------------
+[17]
+title      = None
+date       = 2026-03-17
+newsletter = 'The Deep View'
+link       = https://elink983.thedeepview.co/ss/c/u001.wZPohD0JH12EksCsbt8ZeND5z3fn2eA5HMQUmmQlReaKu1tOr8zLo4GQnPW2OaCh5oqZp17QevIQR9ouXQSnoY4mY2-v2K8fzbWjQxVPHMWmZqjGl1uCeYDgdBkOByE-h26jtRUdaELZVS-QbDVtbPzSoLSAwx6A9I4axQzJwzAa112KvB9F4EedORKYPPZBhiOG4hMLp6CNlTV8whj_6w5WeClZlTfwtwTzcd-sxGup8bIOPRDHjJFK0YGmAPMwyQ5NATNfmxLED9xSmgvP0iucSFofXF93v-UwS-B_17mfysLFiJ8cr1IJ_dg_QcMuWoZR-TioRJQcke_czJAcIiVKsgYXLVdn8WohhAyrd_b4DmckTH8ymHR7PNg1ApA-/4p0/glskTz_WTz6agzZ_UAQ3kg/h27/h001.4I2hlN-aB8fF_3R4yCEYrUOPrKTYkuwPi_CCmyttp54
+body       = 'Meta agreed to spend $27 billion on Nebius AI architecture in a new deal'
+--------------------------------------------------------------------------------
+[18]
+title      = None
+date       = 2026-03-17
+newsletter = 'The Deep View'
+link       = https://elink983.thedeepview.co/ss/c/u001.wZPohD0JH12EksCsbt8ZeKZ2EbiYst2ngrN8r7DkGJu7yCpSVZlj-Qxh9O5j9c-cExeIrUa0wP_TSASiSsx4umW_64kMcKAk0rmgtoCqqFYCWB7FnlNjx5yc6q7joCin9O8qnDuA51Pe2lvhSTVTw7QKHzgrIRVITPG-CWIcbUVuhIy4JmkcZK6bKOsv5L6GuQjyc7ONr0lXrcO81OrwNeydLGuUqMq5J8K-Gs4dB1J4cjXmlFwH9dn8aWbIfcuQ019IKNF3xjcBV8RtVY9dYmDeKTftNj1LfYba8m5Wjq2RLWU-t0Y3wLAETk_5et2mgQCnPUktJbNOT2cvJwl74FIMfHnlhQxbGnJp-23k0G8/4p0/glskTz_WTz6agzZ_UAQ3kg/h28/h001.KLwHFiuna-24aGrgagv69wHI8fNKMTSH6wuuNNWwigI
+body       = 'Sam Altman told college sophomores they will graduate into a world with AGI'
+--------------------------------------------------------------------------------
+[19]
+title      = None
+date       = 2026-03-17
+newsletter = 'The Deep View'
+link       = https://elink983.thedeepview.co/ss/c/u001.8-FsMBK0esmMbeg5-IW0kh3NQxNTV_38eUqEhLzXugTaYp0wnmUsp5I2AKML4iCkLMG9t-eB5qEOCf6O02iU60fkCIC9lBcIVNvWGkYfoy7S-RAajGSnE8aUie8dku21GU7bu2iJNXpGP2F1d3Rg4cH-gnkWbmZ9mReLi71tDlxRvpxv0E9035MHv1BeWyPi8CQBbCuoUponYWJDKju4IgYmIFja-6sPIaHgGCHgqKt9hOlwrdRmI2VrgQN115XKOQvOgv5OWaZz_PilYWEPLw/4p0/glskTz_WTz6agzZ_UAQ3kg/h30/h001.3GbvwJ2xE39E1XwvdV_dn2igBFDMvHgsUVl0lKpx7w0
+body       = 'Mistral introduces Leanstral, an open-source agent designed for Lean 4'
+--------------------------------------------------------------------------------
+[20]
+title      = None
+date       = 2026-03-17
+newsletter = 'The Deep View'
+link       = https://elink983.thedeepview.co/ss/c/u001.wZPohD0JH12EksCsbt8ZeDwbLHm15y4Nai8SseomuzO7mMm8mn5CWxY3kRxLlO4j4yWy58ZXdebFGFO4GyFhxZbfKkiMRPA0oy9Rfq82PGbvVC8PDl03ihVnSpKU-tbEjhy4Z7U5y7s97hgqz6OoefpYgVXlW6SnxEsmhmbOik2LBqn30bMI9cMhLM0pvsfg66rHsH3wKyc2uCVvZ5MhggBrgm7u1t59z_W0qLZc6hNWvhuRlkbH7ZmoyGGrTCLxj0kGjrmZ5WNFfH2h3VDBzT9i5-jbblXxxO_guhgCcnFkcy9EyqKEmTsUsZiBJyCjdvFNRQ_aOn29eriWaWi2LA/4p0/glskTz_WTz6agzZ_UAQ3kg/h31/h001.nryDga6zDUpyx8eAZclw9oCn3TcdVFC3-KWjcq9pG4w
+body       = 'Amazon, Nvidia  partner on Alexa Custom Assistant for in-vehicle experiences'
+--------------------------------------------------------------------------------
+[21]
+title      = None
+date       = 2026-03-17
+newsletter = 'The Deep View'
+link       = https://elink983.thedeepview.co/ss/c/u001.7zYFXt5AA3Px2NyJbPz6hCVHzjBl03QNzAX4H3oTo2xNhO9rQWKnDQKJZwtbhrZRhkd4s1eps3EMjR2BkFGsI-rtR3qEG6ibBx__GqgdzoA2IOP_prXE_admLFCZMqVvEWK60ksGW9B8uRc_Kcwu6-0v5iH-MbZAhMlC22JaqZvk1qeeK9eGzIOpXXqi0_OsD-P1tAaXvT6r_cjGGgQOZKZdKXrejUTmqfCH1azgRCu7CyrtGmacyNj1PX8ZSwhUtytzFMVPAayRflZE-kS8JIZFuCYdS8VIUGGJkSlhxwc/4p0/glskTz_WTz6agzZ_UAQ3kg/h32/h001.dsHVYkJ2RLGfNIayRc48y1CWrcDURzaxVrd6SNbBaEY
+body       = 'Manus: Meta’s general AI agent launched My Computer, allowing it to run on your local machine.'
+--------------------------------------------------------------------------------
+[22]
+title      = None
+date       = 2026-03-17
+newsletter = 'The Deep View'
+link       = https://elink983.thedeepview.co/ss/c/u001.7zYFXt5AA3Px2NyJbPz6hPhxAzNXh6whVtCgDVW39xCze91CioAneCHRC0IuCSw_7Wxe2ZI2USjKc-Lauv3_BaqyZPoFdf7_BHfYqYJF-AHffPYGV0Ol7MqWlaIPfQvBgDq4S3biztQQ6BYm9IOmOmrFuh4hAQ3gWSYxvMtyPnbvPrEooC6c3Wt_XMUWz04WBID62teGdP0a0u_l_DSoVICfNha8xG_NFXfZk9TBY06gKGIGqKEIR4_F-K2xSWlx9MBqLK8k1odASAOay23EwIBMsLmOKN6M0LbQzumJrVc/4p0/glskTz_WTz6agzZ_UAQ3kg/h33/h001.c3_X3URKz5b5gcg7ScsYR-FdZgBGwLzkyhXZhQRI8NM
+body       = 'Perplexity Computer: The agentic platform has now rolled out to all Android users.'
+--------------------------------------------------------------------------------
+[23]
+title      = None
+date       = 2026-03-17
+newsletter = 'The Deep View'
+link       = https://elink983.thedeepview.co/ss/c/u001.7zYFXt5AA3Px2NyJbPz6hEe72EbRYyqq9338VSK1WYEWTN-mP7Gnbuj1kmOVB9rGB9H9bwfgItUvSNy9m4BRD_em4IlMUirEQ50XC9JWGMDBCKHyhRDnguPDQ8H_K0XExOOuQVAsMizhaHp2BcJWhcGaUvhwDZS7oxZRvgqFuxWOJ1AGaj7FenQuyoOFqc2fSETnVzYosYX6t0XOG0qezI9bH5gy-1QKqRFOmqeACGTX3wIZ6_uDoNn0i2PQDYHc5HYMc2VaaPLgnUrp3dmKvNXqY2FB7mgRn71qbFSEoKk/4p0/glskTz_WTz6agzZ_UAQ3kg/h34/h001.oDwg18UzxjeRJ-PATF10l7KMbR8VYcYuUZXb7ukLAnM
+body       = 'Kling AI: The AI video-generating platform made its Kling AI Team Plan available on the desktop app and web.'
+--------------------------------------------------------------------------------
+[24]
+title      = None
+date       = 2026-03-17
+newsletter = 'The Deep View'
+link       = https://elink983.thedeepview.co/ss/c/u001.7zYFXt5AA3Px2NyJbPz6hFpw6oPFpPD4m82Yle7SgOooOmKLp3QpC2O4M81Ep4IAYYpVaRuH4tXEUFTAV7aOLqgsuKA9mIQ_cEviV9iJNMHoyTljaq5XN6OwqiF1_vjORRZ2vWK5ltvlyvmtj_1XJ9VaRni_nnAas0eLo8Wm_DrxM800etoNIspiPpfBiyfZx2htJzz6L9fOCCEWl5B0Ti4iG6kNeDTyqN2_BWtvoHoPIlDbWDKRbcIEjFy1w2zl8y8mw7mlYb66ZxE22Hh0ZEbWHiPifGeDt-Kned7AGC8/4p0/glskTz_WTz6agzZ_UAQ3kg/h35/h001.yjNNM02KHeff4rThjOxwe0BWj6IjdH8Z8yfxO9dclhc
+body       = 'LTX Studio: The AI creative suite for video production now supports translation in 175 languages, with realistic lip sync, for LTX Studio for Enterprise.'
+--------------------------------------------------------------------------------
+[25]
+title      = None
+date       = 2026-03-17
+newsletter = 'The Deep View'
+link       = https://elink983.thedeepview.co/ss/c/u001.7zYFXt5AA3Px2NyJbPz6hL05dDNVTMmhVRC6R55VF982ZkWZIesk_YfVDmEVdvFZ6H0ar14K6xkrvTyyLl8ilSwxKnLPnlPJ6YStPZ_U-rpL0LUim_gC25S6n3Gx1W-FydEsW6nVKgo0Iy-Q1K0U6I-CVWt7_EWKmzTzYITyTAIFCT3T-9GdgCNEDj5QdvExHsYCE3HyIlP-sNtIJsBu05b6jmwBIdW4kiWnsQNRTqHyJOacArxTSHELX20eLcW9uCr4yeFdfmZKdv2YK9F0Mcc3yL-9J8M4lFL6DcfHdo8/4p0/glskTz_WTz6agzZ_UAQ3kg/h36/h001.vi4IxWYmAF7E7AlCQzSReY1__X931LODKZFEGOngXxc
+body       = 'Claude: Anthropic is doubling the usage outside peak hours for all users for the next two weeks as a thank-you.'
+--------------------------------------------------------------------------------
+[26]
+title      = None
+date       = 2026-03-17
+newsletter = 'The Deep View'
+link       = https://elink983.thedeepview.co/ss/c/u001.sXXnxCzQc4R7kmkfT58w-_AbP6r8mVm-k9EBpUhsoZq3wufVfXgzEYQwSNVMfxmnczuFWYpNJ1NqxKhZqEI3gZlC-IRtuA3Y6ViEuUA_fTIdy2nFTMgoyVZPhdsvB6Gffh_WkuDJo-5qDZFWrTxk9F972ozS0P6NWEpwUWibNS7kcS_k1f-WeUYxHkIcdQW_j3_XkNHS1o7xUmspkEGrEMXOMxNEoB_VgK6VfnWb8mGEl3frcpvNWaLO29pQKTdNvj7sqx6JtZzrk2dOgTas2JZrdSER06JjXMYEQMgO-r8aIw2JAaf2wBxk5sBm1aPs/4p0/glskTz_WTz6agzZ_UAQ3kg/h37/h001.Qd_XVhafSxTCiKuoyYELjzwYDZwbsn0ZCvTF8VAyzcI
+body       = 'JP Morgan Chase: Product Manager, Data and AI'
+--------------------------------------------------------------------------------
+[27]
+title      = None
+date       = 2026-03-17
+newsletter = 'The Deep View'
+link       = https://elink983.thedeepview.co/ss/c/u001.MDn7gO0R2GYySjUIwjh9JqLCR7-FjN69P3DqeRSqTLKiyChM4Xf-T3J-Gj2kA_v325cpR2uVkdU6cYjN1qlHoinMJzlw0zrad0LWd4yvmsOYgGdUBBhDQJBwKTOPpEcPxPmTUE9ZK_8U0Tnn1kl-anOx2kd-YVsMqQMv3Hgc9KeOr5WP8E1rr4PT6UxrX9QL_YHEuj8t1jOPwz1jwN2IsKVm_F28_i_JjmCfVeUoY17bDH_mx2o8tmPWr_ul8GiCeo9yOOrwDpxkKxyK4btpypMOdO8_EydMXoyvkT1zlhgbbLE--XMWnSM14occBlow/4p0/glskTz_WTz6agzZ_UAQ3kg/h38/h001.ebvyYCyfFzOdRE7ew7Z-CczEHD_EsVuQDfolNe_8Vzw
+body       = 'Handshake: LMMS Specialist - AI Trainer'
+--------------------------------------------------------------------------------
+[28]
+title      = None
+date       = 2026-03-17
+newsletter = 'The Deep View'
+link       = https://elink983.thedeepview.co/ss/c/u001.wZPohD0JH12EksCsbt8ZeAiMMsFg_HK34i14smNiSxDOPhIHT6nCAYYFuI9GVuQW-V_acRnTl3Zu4MPTCH1AV1nqr4VnJeZ0E70OcKphA6ba1fTTuw8uYxPqryCBQJdo6ZKaalSCiGKfZbRASIzhklOh3ycV4eYTQd7axJQk5N8n-P_TxGhQxMCNfN806lAMKRLqheh_CdfLdW9nGVOUrlYwtHJkDWomUxsARCiBXRy6a4mlf8VlbVm_axaAcP4uFWA8_p-LN8wW4wcH6tZrbkusdTVBV-7HR78-BdSB4FI/4p0/glskTz_WTz6agzZ_UAQ3kg/h39/h001.Bz74xH2tikvj4nfc3kfatDHmOOmI_VViG90wA7yfaEQ
+body       = 'Capgemini: V&V; Engineer - AI-Driven Testing & Validation'
+--------------------------------------------------------------------------------
+[29]
+title      = None
+date       = 2026-03-17
+newsletter = 'The Deep View'
+link       = https://elink983.thedeepview.co/ss/c/u001.8-FsMBK0esmMbeg5-IW0koniRR5S-YFw7RBrhBi8nOyySLH9zHq1WJc__h4bhRlHENvUfXNUqNgw9PgHc0TgDRSBYxb5SHwqZsmfjcMfORTlt21Rsz2Zqnyw2l5a-XkYznMMZVmri1s1Jo_1pPQ2aqJSQld0TvK1TzZzJeY5yNUFN8d7LNUZhmSsOf8n2m4LmrWDiGzTjsiKebbv4JSHIzXswDoSBENaNWRNixadnp5sl3VtZ9xILVQUNLM95phiyAg7d4W-UITz1BePxmJT48sYR46BN9LQRBINkpQI23FXnAHEuQj5fX64499azkU2NeFdAyL11dK6nLFIVqdpjw/4p0/glskTz_WTz6agzZ_UAQ3kg/h40/h001.N64nmDsDCt2mSmG5t4kUMVCL7CbKrpL1jjyXGvERias
+body       = 'FedEx: Senior Solutions Architect'
+--------------------------------------------------------------------------------
+[30]
+title      = 'Which image is real?'
+date       = 2026-03-17
+newsletter = 'The Deep View'
+link       = https://elink983.thedeepview.co/ss/c/u001.gKxW2KpP8aPe_QMyOQduokBEDIe6892b9r6MySOyoYWx2Yr-Iiq-tmP7T1pGc9vc418KvzGo0uVJpvuCrzJy3BwhaHET0jKRO8fF1yXKZaBJi7rxpRUzElH5bD_hpAUDzwRU_cPUhnSjjLVn2yuny670sXNWe19TwctlLGBVt53vl7B5ERDUAOoR4chrdrdbqzz4-qCorqUzpRQ_MDzlWgS68pFtutBKsMajELFe9T9mtS_k95J_JhTv2XzhXHJGVir21OajZe__NuvX8JUfboQ2aXCJf7yPB8zvWFk8-vpWwK6_sMYb4Ash6jKGIhhN4q1xB5kL-SF186CqkTTUTzp3Lx9a74-NOvh9WuFzRkjdwNGIwZOOq40HqfUyVhSuT28Mv4nco06QGoa26HXh-DhzGmbNdUysInY7vziQ23PY_bx1hT8-PAprZqd2vRhJF18KHJwuRFhjGyZ9Fj3bujAtS-EZPFmRJBicrLNLfwk0jiobFrhIYOgT1obF0ZiYAKyreFenZVSSBVxdcEgoWN2iv8CGlir47wCw6fJ1P_KcYmVj3kaRWOOUaKzMZUF_bhn5_TbKBVh3ztEp2LN8SBcjSO51faASLaWEc93hLM0cz9owG_6fosLZzAubnHh-EDSQxUCsWg4LfSGk1aMVgfgO1yZuZPRTYJBQquSFIT3lzRvXi0K6D_2GrqS3mi97x8gUh9yhah9DR9yWtAwJ101QrYlPbxtysCV_m50dk1ii437h_Z-_q5wM3HNvhC8OCx1yyezta4ErrKW8dgzcvYwJ40bYg5UMAkh10HGRv3h0XP7StYmIM7pGdo1QTarlgtRIFVEYxYv9NEt9UovaS5f-ECQ4BjSpxqXQUtTPuQtdKZ9w7JvWun1bGMvrKySzI3MSd0djNTgVTnT9Rs-vPi6nI4gOkVgQ93Ptt-Rp6txby7rkf5eXKz3n7oWTTrAa9Y7xvT39DQi22AZ0cXy_fJzxf4XbkDpeQ7P_gloKib3ZdAJ1MkzzlvSlDk6VxOqlvpJKo1crue0ErKPHw_J9g_AthQ5TR8kBU6R2d_sK-mY/4p0/glskTz_WTz6agzZ_UAQ3kg/h41/h001.A728gFJICq1isa5bsMwBRZ-Qdz0ZoGPgDcf_dbzjrsQ
+body       = 'Option A \xa0|\xa0 Option B  \n\xa0  \n|'
+--------------------------------------------------------------------------------
+[31]
+title      = None
+date       = 2026-03-17
+newsletter = 'The Deep View'
+link       = None
+body       = '| A QUICK POLL BEFORE YOU GO'
+--------------------------------------------------------------------------------
+[32]
+title      = 'Is putting AI data centers in space a good idea or a bad idea?'
+date       = 2026-03-17
+newsletter = 'The Deep View'
+link       = https://elink983.thedeepview.co/ss/c/u001.gKxW2KpP8aPe_QMyOQduokBEDIe6892b9r6MySOyoYUiAsYEIbkFR6Bp9OvMRVN7h9H1wWxcvw7yt0_BSaAw-_5ZEPjt13ij70Z4HPxuUd_N7TvOpcl4fUQE-yYuRnYAOKFFtPi0m9mf1wJgKzKvdWZjrYACgVlz4bmowgVz9RO34BCcUZI-fSodNfUwfF3sZwzb1wUP51pBwGbuHCtIAVVKyI9UQRcfE_NDZRdaAXQhLNDeqPPmudlA7vdsdTVNt1adkJnHuifEmnK8sGdGysTZ0rapKkZVDHORZmM0LMqdLMXO-8mSQ4YFPCDWV2Q4SSXeDGf11H89XJdF37RgNAUqdnNRkkYbNccZfpj-ONZcfw5I-Z95N6zXAKtFGTDGSyXs7GAZFUIc0o-i5dK5XHZYSJO28vSJZ9odgBepxeUJNFBY3wR6SOsqzGIM62RJaQ8noaANN1WuOsITz10SmmkLSV2hL2uzbnXT-aU_8n9srU_awpj5mH-yZC3vlALin6irKAEt97kV_VHWaz5YOcw2EPTHg1JuFSI2lF5oQRdobwTWphXDwRDaq08qPNRwNRYhKY5pxehbk-4Noi61tYkTY1aX4PuRzPGECwP4TwORgBKXlbt8psV9CP_T626yRJ5341q7yppjx1YzXs1YW4mbINGMFXIwT3-pT21SuzFRx0ysS2v0cYITycERdOPKzn6KNm30JN0Mnw9YaK3yt1ZjD5xgknds-PAEJnjB9SPOBDMmbdNU3uWFopgwGXCwx6j21JggL6h1zFD2oT2fIjI3GwCmDDhcQDq3RUchQHpBLsKjiw7PpqOBAOBZW-LgH4PgRHI2sBE3bmq7ShOsJ4ndWmpHu-xrEStT-Ir7I0ORlpJJKhiDVi8Sv-wwivzIf8vhtezWIl8xbtS4f4pLEzmXnXNWtxmWB9Szmd1qRq7awZtkYFD3ReavGArHQT6-3nCaeO92Ru6H6Y5ymPrDRd2dIAA6aaR3D_-ytOlCSzWwsKb6mhHoouOl3vc3Av45X6MYQSitpgzV9WS31beL_K8MWGU--IMWV6-sRghHAsQ/4p0/glskTz_WTz6agzZ_UAQ3kg/h43/h001.EdA-mYLVZMy0da2CnopqeA-NMO0QZcrZ6FKTs1ZLZnw
+body       = '|  Good idea'
+--------------------------------------------------------------------------------
+[33]
+title      = None
+date       = 2026-03-17
+newsletter = 'The Deep View'
+link       = https://elink983.thedeepview.co/ss/c/u001.gKxW2KpP8aPe_QMyOQduokBEDIe6892b9r6MySOyoYUiAsYEIbkFR6Bp9OvMRVN7h9H1wWxcvw7yt0_BSaAw-_5ZEPjt13ij70Z4HPxuUd_N7TvOpcl4fUQE-yYuRnYA0GpXHPfnlHbsqUx3_Cpjjbn_5rMqybHYj8kT2Q1Sfs8gF-V6ZK3z1JxqXXazFT1aAJgHSl145imELAaIV2bREloia6j7bxvu8S7idQKxr83nD1YvaRbqyXZVR3i8vfwoQjW6d0dpyZ5fXBk6kB_VozvfqR3DM7xQyZdbLXY3BmzquqMDHRe1sGQ-fAhRMdHR9VOmWorkDLNQOmDC3R3PUr0phu-VAAegUDgHt19nJayuMjrvpaEWu-Ih-Rd1QmVzBg3vPURwyr9HIFT8E37AJVGwDkDiFBm0E5zsypNbApcdoFEcpLwzvSm1RhUnbTn5bbrRhsYuCOeGum9_bJ7Uh-uBAA6RASgJ0M9AJXqvgHjE8kEx5pJNMH9cYP8mSjvluMSAbjyuhOhyr1PwwCuDvjz18tKkZrKVF2MMayTUcQUifqAFGrIpeCTDEJDjweazrcTB1n5jJsY22wOqCBr2QlvWYk6epDQUU5SPxtOQzY5EkDYfeKkfDuEy_6m4D-C_11pehYm_yC_IVgy2W5JfwXfgH8zgrvRjkFHHPv7wAzbCgz-wGgXr7tsGrDk5fd6PwstWcmBR5B7M3m5k5gOngksgdk4S2k51TKJK0ysqs6lMXVde4u5vICxFewX2bWPKZ6CzGERDjAj3VdAKbIgw_dxxArsoHtEI410P-BYc5Yyfy12426HfZ5nqhJ7_EtHkwJVojehZ_vs5KgrvezC8hu45jRnUaw9g4-79V9ytXwDWwNdVCwlFpl2Zwb0DZMgwouvmOWIfDCBR1PbWZS7OTmV5yoUnoJOtBYTUiFJZAjKdPcDkcGcPEQ4dR6HqZvY3FE5aCLsZLVZyp2lRADZ9C3MxNF4C7mvTK9ORNeozzRh47arqq_KbiweQNaYNCliw8NbDSeTK2lAF2IyJtq8fTjphSRNZKBrFMCw9AOvF4EY/4p0/glskTz_WTz6agzZ_UAQ3kg/h44/h001.8VKl-zUQ3jYjegkb9rnnu0epDInYuZtV9GmjjzCAcHY
+body       = 'Bad idea   \n Other (share your thoughts)   \n  \n\xa0  \nThe Deep View is written by Nat Rubio-Licht, Sabrina Ortiz, Jason Hiner, Faris Kojok and The Deep View crew. Please reply with any feedback.   \n|'
+--------------------------------------------------------------------------------
+[34]
+title      = None
+date       = 2026-03-17
+newsletter = 'The Deep View'
+link       = None
+body       = 'Thanks for reading today’s edition of The Deep View! We’ll see you in the next one.   \n|'
+--------------------------------------------------------------------------------
+[35]
+title      = None
+date       = 2026-03-17
+newsletter = 'The Deep View'
+link       = https://elink983.thedeepview.co/ss/c/u001._eRcgL6IV0j0vCz64F9DYsTYv7xewIT1mxEGOx1gWqVmKZujYmcSVGNrniFAuDcEXD8q98LGHi7-ZpfEb7CHbpqKNQ_t4UCfF3eIlLOu0QZkQYQkMiijBUAhufMgIfDXM7MJqkeclmghF9betRa3b-jUM6wfEF-VqGdq1B4bUt60OeqSB2t0Q3vm0OP0W-Q-Lh3fmHj-aWfrmKzT4eSktBl4pyVOsd5tq5htQQ9CFI7a2BXv5HRY9pylmm8wNyDSzUXgdv8cWvxa5DURphtIHtXc2YCtg-wSkufpQIR_qPEBdRf0Acr3kZ2sbYqhZ2jD/4p0/glskTz_WTz6agzZ_UAQ3kg/h47/h001.PBusNFELK3Pjx1CZ26_NCNqGPRp6w1fvB7ZiW_WNZLk
+body       = '**Link to the original image**  \n|  “Ears are in [the] correct direction.”'
+--------------------------------------------------------------------------------
+[36]
+title      = None
+date       = 2026-03-17
+newsletter = 'The Deep View'
+link       = None
+body       = '“The varying and confused focus on the overlapping layers of grass looked more real to me.”   \n“The facial imperfections in [this image] are not something AI would come up with.”   \n| | |'
+--------------------------------------------------------------------------------
+[37]
+title      = None
+date       = 2026-03-17
+newsletter = 'The Deep View'
+link       = https://elink983.thedeepview.co/ss/c/u001.vI6Z7nr7pM-hqfUrdIi31DfndZPH4G7jfzPlpLs4l1DAC22y5ZCImS1JMgKuq2QgLMooD6FwK2PsqsgMI7WLCvATr_34FQ9r6OU3XqiG9vRf3kZHVz6CXvLZ39yRXG3ZYbYJuZOMX5reS_AlNim-P-nFCaZ8-kzfBFLufIBQPvQmcKSNb_gxS5Tr84MZvvVoOCgO1_T3MbnK7r1l3usjFfv2sPp-AwCdVQxlTqBxvuW68jU-UuHwiiGEHwI8ucAmni1XSFxCcli00yXq3Ro-6w/4p0/glskTz_WTz6agzZ_UAQ3kg/h49/h001.Q8E5Y7_0YBllvPnS7dTe7KIS7JKL_9oJR132aNzU81E
+body       = '**Link to the AI image**  \n|  “The left leg in [this image] was bent in an unusual way.”'
+--------------------------------------------------------------------------------
+[38]
+title      = None
+date       = 2026-03-17
+newsletter = 'The Deep View'
+link       = None
+body       = '“The grass in [this image] was monoculture, lion’s whiskers perfect, lighting too adjusted.”   \n“Both were plausible but the just perfect cinematic composition and golden hour lighting on [this image], with the slightly soft fur, made me question it.”   \n|'
+--------------------------------------------------------------------------------
+[39]
+title      = None
+date       = 2026-03-17
+newsletter = 'The Deep View'
+link       = https://elink983.thedeepview.co/ss/c/u001.5sXVVvymMF6ZsL5-zBaSfGJy3c0bZNZM8i0gD27Frg072kFiqWiLO6zXXqWNHG3-KHeLB2KvWI3YCcZIoI0d8N-le1oL36245tRONfsRldzvY8VwGNCgdO89XCnz_9xOkEPPNmc_gubTP-tPumCrAyzEV3a68Pd2sdqo9kFDfU7tNOJ3xDVShh0TepQbK1-VVqlsdZul8TXMP4vRX3XS-8UdzRHUG2aybUYtRTSyzKA1taOpDioNIdwmCKLs_djb/4p0/glskTz_WTz6agzZ_UAQ3kg/h50/h001.D97cLIFIvfgzIWbbYV941Nv-JWNfxVm5eWV4Ts_OHsA
+body       = 'Take The Deep View with you on the go! We’ve got exclusive, in-depth interviews for you on The Deep View: Conversations podcast every Tuesday morning.   \n| |  SUBSCRIBE'
+--------------------------------------------------------------------------------
+[40]
+title      = None
+date       = 2026-03-17
+newsletter = 'The Deep View'
+link       = https://elink983.thedeepview.co/ss/c/u001.wZPohD0JH12EksCsbt8ZeOU7-9u7BNepXcod3_vWkrsWJBK23t_W38AjyePA3RTZ6iLWgmyecnzocUvI0eq75y7BuwTYL-dpKulcqWpiT-zFC9RTVuvFKsZ756MWiUJ_9NOavrsMOefEKZgBKWGNAopsElC5IgS6a6XWP6V7GAEfflTiNwkfYNGc2dJt8EDJuOeBt_q8GjR7r6xF3bLD0P0T5BMEdoTAuYhuCFBHRv3VXe3xXqItj7JmJYYKNvetOzsbpbCHr4fwG3_E8kC_SA/4p0/glskTz_WTz6agzZ_UAQ3kg/h51/h001.dRadBdQD_GaebFHht7SYk-oQcU3jS30C9VLryu9CCxk
+body       = 'If you want to get in front of an audience of 750,000+ developers, business leaders and tech enthusiasts, get in touch with us here.   \n| |  GET IN TOUCH WITH US HERE'
+--------------------------------------------------------------------------------

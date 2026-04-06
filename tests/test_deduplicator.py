@@ -11,12 +11,12 @@ from processing.deduplicator import select_representative, deduplicate
 def _record(
     body: str,
     title: str | None = None,
-    link: str | None = None,
+    links: list[str] | None = None,
     newsletter: str = "Test Newsletter",
     date: str = "2026-03-17",
 ) -> StoryRecord:
     """Build a minimal StoryRecord for testing."""
-    return StoryRecord(title=title, body=body, link=link, newsletter=newsletter, date=date)
+    return StoryRecord(title=title, body=body, links=links or [], newsletter=newsletter, date=date)
 
 
 # ---------------------------------------------------------------------------
@@ -49,10 +49,10 @@ def test_title_breaks_body_tie():
 
 def test_link_breaks_remaining_tie():
     """When body and title status are equal, linked item beats unlinked item."""
-    no_link = _record("Equal body text here.", title="Headline", link=None)
-    with_link = _record("Equal body text here.", title="Headline", link="https://example.com/story")
-    result = select_representative([no_link, with_link])
-    assert result.link == "https://example.com/story"
+    no_links = _record("Equal body text here.", title="Headline", links=[])
+    with_links = _record("Equal body text here.", title="Headline", links=["https://example.com/story"])
+    result = select_representative([no_links, with_links])
+    assert result.links == ["https://example.com/story"]
 
 
 def test_earliest_date_overrides_representative_date():
@@ -169,3 +169,49 @@ def test_deduplicate_large_cluster_no_exception():
     ]
     result = deduplicate([cluster])
     assert len(result) == 1
+
+
+# ---------------------------------------------------------------------------
+# Phase 4: links merging and source_count tests
+# ---------------------------------------------------------------------------
+
+def test_select_representative_merges_links_from_cluster():
+    """Links from all cluster items are merged into the representative."""
+    r1 = _record("Short.", links=["https://example.com/a"])
+    r2 = _record("Longer body that wins on selection.", links=["https://example.com/b"])
+    result = select_representative([r1, r2])
+    assert "https://example.com/a" in result.links
+    assert "https://example.com/b" in result.links
+    assert len(result.links) == 2
+
+
+def test_select_representative_deduplicates_links():
+    """Duplicate URLs across cluster items appear only once in merged links."""
+    shared_url = "https://example.com/story"
+    r1 = _record("Short.", links=[shared_url])
+    r2 = _record("Longer body wins.", links=[shared_url, "https://example.com/other"])
+    result = select_representative([r1, r2])
+    assert result.links.count(shared_url) == 1
+    assert len(result.links) == 2
+
+
+def test_select_representative_sets_source_count():
+    """source_count equals the number of items in the cluster."""
+    cluster = [_record(f"Body {i}.") for i in range(3)]
+    result = select_representative(cluster)
+    assert result.source_count == 3
+
+
+def test_select_representative_single_item_source_count_is_1():
+    """Single-item cluster has source_count=1."""
+    r = _record("Only item.")
+    result = select_representative([r])
+    assert result.source_count == 1
+
+
+def test_deduplicate_source_count_set_on_representatives():
+    """deduplicate() propagates source_count from clusters to output."""
+    cluster = [_record(f"Story content item {i}.") for i in range(4)]
+    result = deduplicate([cluster])
+    assert len(result) == 1
+    assert result[0].source_count == 4

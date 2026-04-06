@@ -1,0 +1,205 @@
+Total story records: 29
+================================================================================
+[1]
+title      = None
+date       = 2026-03-17
+newsletter = 'The Deep View'
+link       = None
+body       = '**Welcome back.** Nvidia announced several new bets on Monday at GTC 2026. In space, it\'s pushing AI compute to the edge, enabling orbital hardware to process data in real time instead of sending it back to Earth. On the ground, it\'s positioning itself in the center of the robotics era, building the full stack for physical AI without making its own robots. Meanwhile, OpenAI is sharpening its enterprise strategy, working with private equity firms to embed its technology across large portfolios of companies. It\'s also pulling back on "side quests" and doubling down on AI that can help professionals do work. Look for more Nvidia GTC coverage tomorrow as our team meets with more of the AI builders who are driving the industry forward. _—_ _Jason Hiner_  \n**IN TODAY’S NEWSLETTER**  \n  \n##  1. Nvidia builds the tech stack for the robotics era  \n  \n## 2. Nvidia unveils a different vision of AI-in-space  \n  \n## 3. OpenAI expands its enterprise AI plans'
+--------------------------------------------------------------------------------
+[2]
+title      = 'Nvidia builds the tech stack for the robotics era'
+date       = 2026-03-17
+newsletter = 'The Deep View'
+link       = None
+body       = 'Nvidia is betting on robots, without actually building any robots.   \nOn Monday, CEO Jensen Huang unveiled a flood of physical AI offerings and partnerships, spanning self-driving cars, world models, humanoids and data itself, in his keynote at the company’s annual GTC conference in San Jose. The headline? The ChatGPT moment for physical and embodied AI is here, and Nvidia wants to build its foundation.   \n“Physical AI has arrived — every industrial company will become a robotics company,” Huang said. “NVIDIA’s full-stack platform … is the foundation for the robotics industry.”   \nHere are the highlights:   \n  \n  * **Autonomous vehicles:** Nvidia announced Alpamayo 1.5, the latest iteration of the company’s platform built for “reasoning-based” autonomous vehicles. Nvidia debuted the original Alpamayo at CES in January, and since its launch, it has seen 150,000 downloads since its debut. Nvidia also unveiled Halos OS, a “safety foundation” for self-driving vehicles. Additionally, Nvidia announced a partnership with Uber to deploy its technology in robotaxis in 28 markets by 2028. \n  * **Data pipelines:** The company unveiled the Physical AI Data Factory Blueprint, its fix to the biggest bottleneck facing physical AI development. This is an architecture that automates the generation and evaluation of training data, using its Cosmos world models and coding agents to broaden and diversify limited datasets. It’s already in use by several physical AI developers, including Hexagon Robotics, Skild AI and Uber.****\n  * **Robotics:** Nvidia released editions to its Cosmos world models, Isaac simulation framework and GR00T humanoid models. It also announced partnerships with more than a dozen robotics and physical AI companies, including ABB Robotics, Figure and World Labs, to support “production-scale physical AI.”****\n\nThis isn’t the first time in recent history that Huang has proclaimed AI’s future lies in the real world. After a CES keynote where he was flanked by small robots that looked like they came straight out of WALL-E, Huang told reporters that the speed of development could lead to robots with human-level capabilities as soon as “next year.” Now, Nvidia is putting its money where its mouth is.'
+--------------------------------------------------------------------------------
+[3]
+title      = None
+date       = 2026-03-17
+newsletter = 'The Deep View'
+link       = None
+body       = "It’s hard to build a robot. Building the actual hardware that powers physical AI is resource-intensive, time-consuming and expensive. So Nvidia is doing everything _but_ actually __ building them. This is a wise approach in a still-nascent market that's heavy on potential and light on products. Along with reducing upfront costs and risk, by providing the foundation for roboticists to build robots, Nvidia is making itself a foundational part of the ecosystem. Rather than competing with other physical AI hardware firms, the company positions itself as the provider of a necessary service for those firms to thrive. And of course, it's Nvidia. It positioned itself in the center of the large language model revolution, and now it’s looking to do the same for AI's next stage."
+--------------------------------------------------------------------------------
+[4]
+title      = 'Want To Give Every Employee The Power of AI?'
+date       = 2026-03-17
+newsletter = 'The Deep View'
+link       = None
+body       = 'And, more importantly, want to do it _safely_ and _securely?_ Then you don’t need just any AI platform… you need Airia.   \nAiria is the enterprise AI platform built to offer organizations the best of both worlds – access to the kind of no-code, low-code, and pro-code tools that boost productivity and innovation for your team, while also maintaining the security you need to ensure compliance. The kicker? You can manage all of these features from one central hub, offering simple, seamless control. It’s the perfect platform to future-proof your enterprise with the power of AI… without ever having to worry about any of the security concerns that keep the rest of us up at night.   \nWant to test Airia enterprise AI for yourself? Try a demo right here.  \n   \n|\n\n| HARDWARE'
+--------------------------------------------------------------------------------
+[5]
+title      = 'Nvidia unveils a different vision of AI-in-space'
+date       = 2026-03-17
+newsletter = 'The Deep View'
+link       = None
+body       = 'You may have heard of data centers on the ground, but now Nvidia chips are bringing them to space.   \nAt Nvidia GTC on Monday, the company unveiled its first space computing solutions, which, according to Nvidia, will usher in a new era of space innovation by bringing AI compute to orbital data centers (ODCs), geospatial intelligence, and autonomous space operations.   \nNvidia joins Google and SpaceX, which have unveiled plans for putting datacenters and AI factories in space. In fact, SpaceX became the largest private company in the world by acquiring xAI and using space-based data centers as a major synergy of the deal. However, Nvidia is doing something different. It\'s enabling space-based devices, such as satellites and spacecraft, to process AI workloads in real time without sending the data back to earth-based AI factories.   \n“AI processing across space and ground systems enables real-time sensing, decision-making and autonomy, transforming orbital data centers into instruments of discovery and spacecraft into self-navigating systems,” said Nvidia CEO Jensen Huang.   \nWhile Nvidia’s AI-powered space infrastructure includes existing technologies such as the IGX Thor & Jetson Orin, the Nvidia Vera Rubin Space Module is the latest in Nvidia’s accelerated platforms for space. Highlights include:   \n  \n  * Up to 25x more AI compute for space-based inference than the Nvidia H100 GPU \n  * Large language models and advanced foundation models operate directly in space \n  * Tightly integrated CPU-GPU architecture and high-bandwidth interconnect for processing of a massive data stream from space in real-time\n\nSpace is a challenging environment for electronics due to constraints on size, weight, and power (SWaP), requiring systems to be small, lightweight, and to consume minimal power. Nvidia’s infrastructure was designed to meet those specific needs. Space companies, including Aetherflux, Axiom Space, Kepler Communications, Planet, Sophia Space, and Starcloud, are already using Nvidia\'s platforms for their missions.   \nUnlike traditional satellites that beam raw data back to Earth for processing, space computing enables real-time on-orbit analysis. This is critical for disaster monitoring, environmental hazard tracking, and autonomous operations that don\'t require waiting on human input from mission control.   \n|\n\nIn the post, Huang says, "intelligence must live wherever data is generated," which brings up a really interesting point. The benefits of processing data with AI on the edge are clear, as there has been a strong emphasis on running AI models on the edge for personal and organizational use cases since AI became mainstream. Local processing unlocks new levels of speed, reliability, security, and more. Now, if you apply that logic to everything, the number of workflows and infrastructure that will need to change is vast, with the most visceral example being something as complex and far-reaching as space.'
+--------------------------------------------------------------------------------
+[6]
+title      = 'How to Get More Out of Microsoft 365 with Slack'
+date       = 2026-03-17
+newsletter = 'The Deep View'
+link       = None
+body       = "Ready to unlock the full potential of your Microsoft 365 investment?   \nWatch our on-demand webinar to see how Slack's open connected platform turns scattered tools into a cohesive, AI-powered ecosystem.   \nYou'll learn strategies for seamless Microsoft 365 integration and see real-world examples of workflow automation in action. Plus, discover how to create an adaptable foundation that scales with emerging technologies and positions your business for future innovation.   \nWatch now  \n   \n|\n\n| ENTERPRISE"
+--------------------------------------------------------------------------------
+[7]
+title      = 'OpenAI expands its enterprise AI plans'
+date       = 2026-03-17
+newsletter = 'The Deep View'
+link       = None
+body       = 'OpenAI is pushing deeper into enterprise adoption, now courting private equity firms.   \nOn Monday, a Reuters report revealed that OpenAI is in talks with private equity firms TPG, Bain, Brookfield, and Advent to form a joint venture with a pre-money valuation of $10 billion, citing people close to the matter.   \nShortly after the news broke, Fidji Simo, CEO of Applications at OpenAI, confirmed the news, saying OpenAI is “excited to be building a deployment arm and will share more details soon.” The benefits for OpenAI include capturing more enterprise clients, typically a sector in which OpenAI has lagged behind competitors.   \nIn an interview with The Wall Street Journal, Simo said that OpenAI was reducing its "side quests" and experimental projects and dedicating more resources to coding and working with enterprise businesses.   \nIn her X post, Simo said the new deployment arm has been in the works since December and focuses on embedding engineers directly within enterprise clients to enable closer collaboration. The Reuters report provided more information on how the deal would operate, including:   \n  \n  \n  * The private equity investors commit $4 billion in return for equity stakes, a say in how OpenAI’s solutions are deployed across its portfolio companies, board seats and early access to OpenAI’s enterprise tools. \n  * TPG would commit the most capital, serving as the anchor investor, while Advent, Bain, and Brookfield would be co-founding investors. \n  * The firms would get an equity stake of approximately $1 billion, though the source told Reuters the numbers and plan details were subject to change.\n\n“This is essentially part of running a sales motion. It will help them [OpenAI] sell more of their services/tokens,” said Eric Compton, director of equity research, technology at Morningstar.   \nBeyond the benefits listed in the deals, private equity firms also have strategic reasons to participate.   \n“They are 100% motivated to \'not fall behind\' and risk not having successful exits for their assets, so having a direct seat at the table in this process will help further that goal in their eyes,” added Compton.   \nSimo highlighted the urgency and demand for AI solutions among enterprises, noting that nearly 1 million businesses are running on OpenAI products, with API usage jumping 20% in the week after GPT-5.4 launched. Furthermore, she said, Frontier, the platform OpenAI launched last month to help enterprises manage AI coworkers, is having more demand than the company can handle.   \n|\n\nPortfolios of private equity firms at the scale of the ones above typically hold hundreds of companies each, all of which rely on the firms for decision-making, including software investments. Targeting these firms is therefore a sound strategic move for AI companies, as it guarantees the deployment of their technology across many companies, and OpenAI is not the only one doing so. Last week, The Information reported Anthropic is in talks with Blackstone and other private equity firms to form a similar deal. The timelines and favorable terms of these deals could shake up which companies lead in the enterprise space.'
+--------------------------------------------------------------------------------
+[8]
+title      = None
+date       = 2026-03-17
+newsletter = 'The Deep View'
+link       = None
+body       = 'Startup backed by Nvidia, Reflection AI invests billions on Korea data center'
+--------------------------------------------------------------------------------
+[9]
+title      = None
+date       = 2026-03-17
+newsletter = 'The Deep View'
+link       = None
+body       = 'Meta agreed to spend $27 billion on Nebius AI architecture in a new deal'
+--------------------------------------------------------------------------------
+[10]
+title      = None
+date       = 2026-03-17
+newsletter = 'The Deep View'
+link       = None
+body       = 'Sam Altman told college sophomores they will graduate into a world with AGI'
+--------------------------------------------------------------------------------
+[11]
+title      = None
+date       = 2026-03-17
+newsletter = 'The Deep View'
+link       = None
+body       = 'Mistral introduces Leanstral, an open-source agent designed for Lean 4'
+--------------------------------------------------------------------------------
+[12]
+title      = None
+date       = 2026-03-17
+newsletter = 'The Deep View'
+link       = None
+body       = 'Amazon, Nvidia  partner on Alexa Custom Assistant for in-vehicle experiences'
+--------------------------------------------------------------------------------
+[13]
+title      = None
+date       = 2026-03-17
+newsletter = 'The Deep View'
+link       = None
+body       = 'Manus: Meta’s general AI agent launched My Computer, allowing it to run on your local machine.'
+--------------------------------------------------------------------------------
+[14]
+title      = None
+date       = 2026-03-17
+newsletter = 'The Deep View'
+link       = None
+body       = 'Perplexity Computer: The agentic platform has now rolled out to all Android users.'
+--------------------------------------------------------------------------------
+[15]
+title      = None
+date       = 2026-03-17
+newsletter = 'The Deep View'
+link       = None
+body       = 'Kling AI: The AI video-generating platform made its Kling AI Team Plan available on the desktop app and web.'
+--------------------------------------------------------------------------------
+[16]
+title      = None
+date       = 2026-03-17
+newsletter = 'The Deep View'
+link       = None
+body       = 'LTX Studio: The AI creative suite for video production now supports translation in 175 languages, with realistic lip sync, for LTX Studio for Enterprise.'
+--------------------------------------------------------------------------------
+[17]
+title      = None
+date       = 2026-03-17
+newsletter = 'The Deep View'
+link       = None
+body       = 'Claude: Anthropic is doubling the usage outside peak hours for all users for the next two weeks as a thank-you.'
+--------------------------------------------------------------------------------
+[18]
+title      = None
+date       = 2026-03-17
+newsletter = 'The Deep View'
+link       = None
+body       = 'JP Morgan Chase: Product Manager, Data and AI'
+--------------------------------------------------------------------------------
+[19]
+title      = None
+date       = 2026-03-17
+newsletter = 'The Deep View'
+link       = None
+body       = 'Handshake: LMMS Specialist - AI Trainer'
+--------------------------------------------------------------------------------
+[20]
+title      = None
+date       = 2026-03-17
+newsletter = 'The Deep View'
+link       = None
+body       = 'Capgemini: V&V; Engineer - AI-Driven Testing & Validation'
+--------------------------------------------------------------------------------
+[21]
+title      = None
+date       = 2026-03-17
+newsletter = 'The Deep View'
+link       = None
+body       = 'FedEx: Senior Solutions Architect'
+--------------------------------------------------------------------------------
+[22]
+title      = 'Which image is real?'
+date       = 2026-03-17
+newsletter = 'The Deep View'
+link       = None
+body       = 'Option A  |  Option B'
+--------------------------------------------------------------------------------
+[23]
+title      = 'Is putting AI data centers in space a good idea or a bad idea?'
+date       = 2026-03-17
+newsletter = 'The Deep View'
+link       = None
+body       = 'Good idea \n\n Bad idea   \n Other (share your thoughts)   \n  \n   \nThe Deep View is written by Nat Rubio-Licht, Sabrina Ortiz, Jason Hiner, Faris Kojok and The Deep View crew. Please reply with any feedback.'
+--------------------------------------------------------------------------------
+[24]
+title      = 'Link to the original image'
+date       = 2026-03-17
+newsletter = 'The Deep View'
+link       = None
+body       = '“Ears are in [the] correct direction.”'
+--------------------------------------------------------------------------------
+[25]
+title      = None
+date       = 2026-03-17
+newsletter = 'The Deep View'
+link       = None
+body       = '“The varying and confused focus on the overlapping layers of grass looked more real to me.”   \n“The facial imperfections in [this image] are not something AI would come up with.”'
+--------------------------------------------------------------------------------
+[26]
+title      = 'Link to the AI image'
+date       = 2026-03-17
+newsletter = 'The Deep View'
+link       = None
+body       = '“The left leg in [this image] was bent in an unusual way.”'
+--------------------------------------------------------------------------------
+[27]
+title      = None
+date       = 2026-03-17
+newsletter = 'The Deep View'
+link       = None
+body       = '“The grass in [this image] was monoculture, lion’s whiskers perfect, lighting too adjusted.”   \n“Both were plausible but the just perfect cinematic composition and golden hour lighting on [this image], with the slightly soft fur, made me question it.”'
+--------------------------------------------------------------------------------
+[28]
+title      = None
+date       = 2026-03-17
+newsletter = 'The Deep View'
+link       = None
+body       = 'Take The Deep View with you on the go! We’ve got exclusive, in-depth interviews for you on The Deep View: Conversations podcast every Tuesday morning.   \n| |  SUBSCRIBE'
+--------------------------------------------------------------------------------
+[29]
+title      = None
+date       = 2026-03-17
+newsletter = 'The Deep View'
+link       = None
+body       = 'If you want to get in front of an audience of 750,000+ developers, business leaders and tech enthusiasts, get in touch with us here.   \n| |  GET IN TOUCH WITH US HERE'
+--------------------------------------------------------------------------------

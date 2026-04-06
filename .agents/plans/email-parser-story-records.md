@@ -738,6 +738,120 @@ def test_short_valid_story_still_preserved_after_phase2():
 
 ---
 
+## PHASE 3 TASKS — Post-title body artifact filter
+
+> Tasks 1–12 above are complete. Task 13 below addresses the `body='|'` records revealed by deduplicator Level 5 inspection.
+
+---
+
+### TASK 13 — APPLY `_is_table_artifact()` to body in `parse_emails()` after `_extract_title()`
+
+**Root cause:** `_is_table_artifact()` is applied in `_extract_sections()` on `clean_text`, which includes the section heading. A section like `## Nvidia builds the tech stack for the robotics era\n\n|` passes because the heading chars dominate — `|` is only ~7% of non-whitespace. After `_extract_title()` strips the heading in `parse_emails()`, the remaining body is `"|"`. `"|"` is 100% pipe — a clear table artifact — but nothing re-checks the body at this point. Five such records appeared in real-email testing (`the_deep_view.eml`) and clustered correctly in deduplication but should not have entered the pipeline at all.
+
+- **UPDATE** `ingestion/email_parser.py` — in `parse_emails()`, in the `for section in sections:` loop, add a `_is_table_artifact(body)` guard after `_extract_title()` and after the empty-body fallback:
+
+```python
+for section in sections:
+    section_text = section.get("text", "").strip()
+    if not section_text:
+        continue
+    title, body = _extract_title(section_text)
+    if not body.strip():
+        body = section_text  # fallback: use full text if title stripped everything
+    if _is_table_artifact(body):           # NEW — skip if title extraction left only structural noise
+        continue
+    link = _select_link(section.get("links", []))
+    results.append(StoryRecord(
+        title=title,
+        body=body,
+        link=link,
+        newsletter=newsletter,
+        date=date_formatted,
+    ))
+```
+
+- **GOTCHA:** The guard must come AFTER the empty-body fallback. If `body.strip()` is empty, the fallback sets `body = section_text` (full text). That fallback body should also be checked — `_is_table_artifact(body)` will catch a section where the entire text is structural noise, which is also correct.
+- **GOTCHA:** Do not add a `_MIN_SECTION_CHARS` check on `body` here — that would violate the "never filter by body length" rule. `_is_table_artifact()` is a structural signal (pipe density), not a length check.
+- **EFFECT:** The 5 `body='|'` records from `the_deep_view.eml` will be dropped, reducing the real-email output from 45 → 40 records.
+- **VALIDATE:** `python -m py_compile ingestion/email_parser.py && echo "syntax ok"`
+
+---
+
+### TASK 14 — ADD Phase 3 test to `tests/test_email_parser.py`
+
+Add the following test after the existing Phase 2 tests. Do not remove or modify anything already there.
+
+```python
+# ---------------------------------------------------------------------------
+# Phase 3: Post-title body artifact filter tests
+# ---------------------------------------------------------------------------
+
+def test_heading_with_pipe_body_not_a_story():
+    """_is_table_artifact catches body='|' that remains after _extract_title strips a heading.
+
+    This is the exact failure mode observed in real email parsing: a section heading
+    is a genuine article title, but the adjacent content (a table cell fragment) becomes
+    the body after title extraction. The resulting record has body='|' and no story content.
+    """
+    from ingestion.email_parser import _extract_title, _is_table_artifact
+    section_text = "# Nvidia builds the tech stack for the robotics era\n|"
+    title, body = _extract_title(section_text)
+    assert title == "Nvidia builds the tech stack for the robotics era"
+    assert _is_table_artifact(body), (
+        f"body={body!r} after title extraction should be a table artifact"
+    )
+
+
+def test_titled_section_with_pipe_body_dropped_by_parse_emails():
+    """parse_emails() drops a record when title extraction leaves a pipe-only body."""
+    html = _html(
+        "<h3>Nvidia builds the tech stack for the robotics era</h3>"
+        "<p>|</p>"
+    )
+    raw = _make_raw_email(html)
+    records = parse_emails([raw])
+    pipe_body_records = [r for r in records if r.body.strip() == "|"]
+    assert pipe_body_records == [], (
+        f"Got {len(pipe_body_records)} record(s) with body='|': "
+        f"{[r.title for r in pipe_body_records]}"
+    )
+```
+
+- **VALIDATE:** `python -m pytest tests/test_email_parser.py -v`
+
+---
+
+### Level 5 — Real-email re-inspection after Phase 3
+
+After running the tests, verify the real-email pipeline drops the `body='|'` cluster:
+
+```bash
+python -c "
+import sys; sys.path.insert(0, '.')
+from ingestion.email_parser import parse_emails
+with open('debug_samples/the_deep_view.eml', 'rb') as f:
+    raw = f.read()
+records = parse_emails([raw])
+pipe_records = [r for r in records if r.body.strip() == '|']
+print(f'Total records: {len(records)}')
+print(f'Records with body=\"|\": {len(pipe_records)}')
+if pipe_records:
+    for r in pipe_records:
+        print(f'  title={r.title!r}')
+else:
+    print('No pipe-body records — Phase 3 fix is working.')
+"
+```
+
+Expected output:
+```
+Total records: 40
+Records with body="|": 0
+No pipe-body records — Phase 3 fix is working.
+```
+
+---
+
 ## TESTING STRATEGY
 
 ### Unit Tests (new additions)
@@ -916,3 +1030,28 @@ All changes are in a single file (`ingestion/email_parser.py`). Git revert resto
   `_MIN_SECTION_CHARS` is set to 20
   Expected output or result:
   `grep "_MIN_SECTION_CHARS" ingestion/email_parser.py` shows `_MIN_SECTION_CHARS = 20`
+
+- Item to check:
+  ```
+  python -c "
+  import sys; sys.path.insert(0, '.')
+  from ingestion.email_parser import parse_emails
+  with open('debug_samples/the_deep_view.eml', 'rb') as f:
+      raw = f.read()
+  records = parse_emails([raw])
+  pipe_records = [r for r in records if r.body.strip() == '|']
+  print(f'Total records: {len(records)}')
+  print(f'Records with body=\"|\": {len(pipe_records)}')
+  if pipe_records:
+      for r in pipe_records:
+          print(f'  title={r.title!r}')
+  else:
+      print('No pipe-body records — Phase 3 fix is working.')
+  "
+  ```
+  Expected output or result:
+  ```
+  Total records: 40
+  Records with body="|": 0
+  No pipe-body records — Phase 3 fix is working.
+  ```

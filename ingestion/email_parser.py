@@ -4,7 +4,7 @@ import email
 import re
 import email.utils
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from email import policy
 from urllib.parse import urlparse, urlunparse, urlencode, parse_qs
@@ -81,7 +81,7 @@ _SECTION_SPLIT_PATTERN = re.compile(r'\n{2,}|^\s*[-*_]{3,}\s*$', re.MULTILINE)
 _MIN_SECTION_CHARS = 20     # low floor: skip only empty/whitespace sections; short valid story
                              # items must not be dropped here — the LLM filter handles noise
 _MIN_LIST_ITEM_CHARS = 30   # lower threshold for individual bullet items (job listings etc.)
-_MD_LINK_RE = re.compile(r'\[([^\]]*)\]\((https?://[^\)]+)\)')
+_MD_LINK_RE = re.compile(r'\[([^\[\]]*(?:\[[^\[\]]*\][^\[\]]*)*)\]\((https?://[^\)]+)\)')
 _LIST_ITEM_START = re.compile(r'^\s*[\*\-]\s+', re.MULTILINE)
 
 # Tracking/analytics query parameters stripped during URL normalization.
@@ -112,12 +112,14 @@ _SOCIAL_DOMAINS = frozenset({
 
 # Substrings that identify newsletter infrastructure segments — checked against lowercase text.
 # These are sections whose sole purpose is managing the subscription system, referral
-# growth, or legal/footer boilerplate. They contain no content value for the reader.
+# growth, legal/footer boilerplate, or email navigation. They contain no content value
+# for the reader and are not story candidates.
 #
-# NOT included: sponsor content, advertising copy, podcast/media availability, product
-# announcements, reports, job listings, or discounts — these are content sections and
-# are retained regardless of promotional nature. Very short pure-CTA sections are
-# handled by _MIN_SECTION_CHARS instead.
+# Deliberately excluded: sponsor labels ("together with", "brought to you by"), sign-offs
+# ("thanks for reading"), interactive sections ("before you go", "a quick poll"), and all
+# other content-adjacent signals. Those are content-level judgments — the LLM filter
+# decides keep/drop for them. This list is restricted to structural/infrastructure signals
+# that are never story content under any circumstances.
 _BOILERPLATE_SEGMENT_SIGNALS = (
     # Subscription management / preferences
     "manage your subscriptions",
@@ -140,6 +142,8 @@ _BOILERPLATE_SEGMENT_SIGNALS = (
     "in this issue",
     "what's inside",
     "today's top stories",
+    # Newsletter intro — contains ToC signals; structural navigation not story content
+    "in today's newsletter",
 )
 
 
@@ -214,16 +218,29 @@ def _is_boilerplate_link(url: str, anchor_text: str) -> bool:
 
 @dataclass
 class StoryRecord:
-    title: str | None    # first #-heading line, stripped of # markers; None if absent
+    title: str | None    # first #-heading or **bold** title; None if absent
     body: str            # section text without the title line; primary dedup signal
-    link: str | None     # first non-boilerplate URL from the section; None if absent
+    links: list[str]     # all non-boilerplate URLs from the section; empty list if none
     newsletter: str      # sender display name or email address
     date: str            # YYYY-MM-DD; empty string if email Date header missing/unparseable
+    source_count: int = field(default=1)
+    # source_count: set to 1 by parse_emails(); updated to len(cluster) by deduplicate().
+    # A value > 1 means this record was selected as representative from N duplicate story items.
 
 
 def _is_boilerplate_segment(text: str) -> bool:
     """Return True if this text segment is sponsor or shell content, not a news story."""
-    text_lower = text.lower()
+    # Normalize Unicode smart apostrophes/quotes → ASCII before signal matching.
+    # TDV and other newsletters use U+2019 RIGHT SINGLE QUOTATION MARK in phrases
+    # like "IN TODAY'S NEWSLETTER" which would otherwise not match the ASCII signal.
+    text_lower = (
+        text
+        .replace('\u2018', "'")   # LEFT SINGLE QUOTATION MARK
+        .replace('\u2019', "'")   # RIGHT SINGLE QUOTATION MARK
+        .replace('\u201c', '"')   # LEFT DOUBLE QUOTATION MARK
+        .replace('\u201d', '"')   # RIGHT DOUBLE QUOTATION MARK
+        .lower()
+    )
     return any(signal in text_lower for signal in _BOILERPLATE_SEGMENT_SIGNALS)
 
 
@@ -263,6 +280,62 @@ def _is_sparse_link_section(raw_sec: str, links: list[dict]) -> bool:
     return len(bare) < 30
 
 
+_LEADING_PIPE_RE = re.compile(r'^\|\s*')
+
+
+def _strip_leading_pipe(text: str) -> str:
+    """Strip a leading table-cell '|' artifact from section text.
+
+    Newsletter email HTML uses table-based layout. When html2text converts
+    a table cell, it may emit '|  ' at the start of the cell's content.
+    This strips that prefix so downstream filters and title detection work
+    on the actual content text.
+
+    Only strips if the text starts with '|' followed by optional spaces.
+    A line that is ONLY '|' (with no content) is left for _is_table_artifact()
+    to handle.
+    """
+    stripped = _LEADING_PIPE_RE.sub('', text, count=1)
+    return stripped if stripped.strip() else text
+
+
+def _is_story_heading(text: str) -> bool:
+    """Return True if the section contains a story-level heading within its first two
+    non-empty lines.
+
+    Checks the FIRST non-empty line, then the SECOND non-empty line if the first is
+    not a heading. The two-line check handles the category-label-then-heading pattern
+    used in TDV-style newsletters, where html2text trailing-space artifacts (`  \\n  \\n`)
+    fuse a sponsor/category label line and the following `# heading` into one section.
+
+    A story-level heading is a bare '#'-prefixed line (not bold-wrapped).
+
+    - '# Nvidia builds the tech stack for the robotics era' → True
+    - '# Nvidia builds...\\n\\n| [](image-url)' → True (first line is story heading)
+    - 'GTC COVERAGE BROUGHT TO YOU BY IREN\\n\\n# Unleashing NVIDIA...' → True
+    - '# **Headlines & Launches**' → False (bold-wrapped category label)
+    - '# **TLDR AI 2026-03-11**' → False (bold-wrapped newsletter title)
+    - 'Paragraph text without a heading' → False
+    """
+    lines = [l for l in text.strip().splitlines() if l.strip()]
+    if not lines:
+        return False
+
+    def _is_bare_heading(line: str) -> bool:
+        if not line.startswith('#'):
+            return False
+        heading_text = line.lstrip('#').strip()
+        return not (heading_text.startswith('**') and heading_text.endswith('**') and len(heading_text) > 4)
+
+    # Primary: first non-empty line is a # heading
+    if _is_bare_heading(lines[0]):
+        return True
+    # Secondary: second non-empty line is a # heading (category-label-then-heading pattern)
+    if len(lines) >= 2 and _is_bare_heading(lines[1]):
+        return True
+    return False
+
+
 def _is_heading_only(text: str) -> bool:
     """Return True if text contains only markdown headings (lines starting with #).
 
@@ -280,35 +353,67 @@ def _is_heading_only(text: str) -> bool:
 def _extract_title(text: str) -> tuple[str | None, str]:
     """Extract a heading title from section text.
 
-    If the first non-empty line begins with one or more '#' characters (markdown
-    heading), it is treated as the title. Returns (title_text, body_without_title).
-    Otherwise returns (None, original_text).
+    Detects two title formats on the first non-empty line:
+    1. Markdown heading: line starts with '#'
+    2. Bold title: entire line is '**title text**'
 
-    The '#' markers and leading/trailing whitespace are stripped from the title.
-    The returned body is the text after the title line with leading blank lines removed.
+    If neither format is found on the first non-empty line, also checks the
+    immediate next non-empty line for a '#' heading. This handles the
+    category-label-then-heading pattern (e.g. TDV sponsor sections where
+    "SPONSOR LABEL\\n\\n# Story Title" is fused into one section by html2text
+    trailing-space artifacts). Pre-heading text is included at the start of
+    the body.
+
+    Returns (title_text, body_without_title).
+    Returns (None, original_text) if no title is found.
     """
     lines = text.split("\n")
+    first_content_idx = None
     for i, line in enumerate(lines):
         stripped = line.strip()
         if not stripped:
             continue
+        # Format 1: markdown heading on first non-empty line
         if stripped.startswith("#"):
             title = stripped.lstrip("#").strip()
             body = "\n".join(lines[i + 1:]).lstrip("\n").strip()
             return title or None, body
-        # First non-empty line is not a heading
+        # Format 2: bold title on first non-empty line
+        if stripped.startswith("**") and stripped.endswith("**") and len(stripped) > 4:
+            title = stripped[2:-2].strip()
+            body = "\n".join(lines[i + 1:]).lstrip("\n").strip()
+            return title or None, body
+        # First non-empty line is not a heading — check the next non-empty line.
+        first_content_idx = i
         break
+
+    # Secondary scan: look for a # heading on the immediate next non-empty line
+    # (category-label-then-heading pattern).
+    if first_content_idx is not None:
+        for j in range(first_content_idx + 1, len(lines)):
+            stripped_j = lines[j].strip()
+            if not stripped_j:
+                continue
+            if stripped_j.startswith("#"):
+                heading_text = stripped_j.lstrip("#").strip()
+                if not (heading_text.startswith("**") and heading_text.endswith("**") and len(heading_text) > 4):
+                    pre_body = "\n".join(lines[:j]).strip()
+                    post_body = "\n".join(lines[j + 1:]).lstrip("\n").strip()
+                    body = (pre_body + "\n\n" + post_body).strip() if pre_body else post_body
+                    return heading_text or None, body
+            break  # Only check the immediate next non-empty line
+
     return None, text
 
 
-def _select_link(links: list[dict]) -> str | None:
-    """Return the first URL from a section's filtered links list, or None if empty.
+def _collect_links(links: list[dict]) -> list[str]:
+    """Return all normalized URLs from a section's filtered links list.
 
     The links list is already boilerplate-filtered by _extract_sections() — every
-    entry is a non-boilerplate, non-social URL. The first entry is selected as the
-    representative link for this story record.
+    entry is a non-boilerplate, non-social URL. All URLs are returned as a list.
+    Returns an empty list if no links are present.
     """
-    return links[0]["url"] if links else None
+    return [entry["url"] for entry in links]
 
 
 def _split_list_section(sec: str) -> list[dict] | None:
@@ -338,26 +443,35 @@ def _split_list_section(sec: str) -> list[dict] | None:
         end = item_matches[idx + 1].start() if idx + 1 < len(item_matches) else len(sec)
         items_raw.append(sec[start:end].strip())
 
-    # Build per-item dicts; only items with their own non-boilerplate link are kept
+    # Build per-item dicts. Track linked_count separately so link-free items with
+    # sufficient text are also included (e.g. a bullet with no hyperlink but valid prose).
+    # The split is only returned when at least 2 items carry distinct links — this preserves
+    # the invariant that splitting only occurs for genuine aggregator sections.
     result: list[dict] = []
+    linked_count = 0
     for raw in items_raw:
         best_by_norm: dict[str, dict] = {}
         for anchor, url in _MD_LINK_RE.findall(raw):
-            if not anchor:              # skip empty-anchor image links
-                continue
             if _is_boilerplate_url(url):
                 continue
             norm = _normalize_url(url)
+            if not anchor:
+                # Empty-anchor image link: collect URL if no named link already holds it.
+                if norm not in best_by_norm:
+                    best_by_norm[norm] = {"url": norm, "anchor_text": ""}
+                continue
             if norm not in best_by_norm:
                 best_by_norm[norm] = {"url": norm, "anchor_text": anchor}
             elif len(anchor) > len(best_by_norm[norm]["anchor_text"]):
                 best_by_norm[norm]["anchor_text"] = anchor
-        links = list(best_by_norm.values())
+        item_links = list(best_by_norm.values())
         clean_text = _MD_LINK_RE.sub(r'\1', raw).strip()
-        if links and len(clean_text) >= _MIN_LIST_ITEM_CHARS:
-            result.append({"text": clean_text, "links": links})
+        if len(clean_text) >= _MIN_LIST_ITEM_CHARS:
+            result.append({"text": clean_text, "links": item_links})
+            if item_links:
+                linked_count += 1
 
-    return result if len(result) >= 2 else None
+    return result if linked_count >= 2 else None
 
 
 def _extract_sections(html_text: str) -> list[dict]:
@@ -381,15 +495,64 @@ def _extract_sections(html_text: str) -> list[dict]:
 
     raw_sections = _SECTION_SPLIT_PATTERN.split(md_text)
 
-    # Merge heading-only sections with the next section
+    # Story reassembly: merge story headings with all following paragraph sections
+    # until the next story heading, category heading, or boilerplate boundary.
     merged: list[str] = []
     i = 0
     while i < len(raw_sections):
         sec = raw_sections[i].strip()
-        if _is_heading_only(sec) and i + 1 < len(raw_sections):
-            # Merge heading with next section
-            merged.append(sec + "\n\n" + raw_sections[i + 1].strip())
-            i += 2
+        if not sec:
+            i += 1
+            continue
+
+        if _is_story_heading(sec):
+            # Collect this heading and all following non-heading, non-boilerplate sections
+            story_parts = [sec]
+            i += 1
+            while i < len(raw_sections):
+                next_sec = raw_sections[i].strip()
+                if not next_sec:
+                    i += 1
+                    continue
+                # Stop collecting at any heading (new story or category label).
+                # _is_heading_only catches pure '#' sections and bold-wrapped category
+                # headings. _is_story_heading catches TDV-style headings that include
+                # an image link in the same section (# Heading\n\n| [](image-url)).
+                if _is_heading_only(next_sec) or _is_story_heading(next_sec):
+                    break
+                # Stop collecting at structural noise only (table artifacts, short labels).
+                # Content-judgment signals (sponsor labels, sign-offs) are intentionally NOT
+                # break conditions — the LLM filter handles content keep/drop decisions.
+                clean_next = _MD_LINK_RE.sub(r'\1', next_sec).strip()
+                # Special case: section consists entirely of empty-anchor links — e.g.
+                # [](article-url) from an <a href="url"><img ...></a> in TDV-style newsletters.
+                # It carries no prose but holds the article image link URL. Include it in
+                # story_parts so its URL is captured by the second-pass link extraction,
+                # then keep collecting body paragraphs.
+                if not clean_next and _MD_LINK_RE.search(next_sec):
+                    story_parts.append(next_sec)
+                    i += 1
+                    continue
+                if _is_table_artifact(clean_next):
+                    break
+                # Stop collecting at short structural labels (e.g. '| HARDWARE', '| ENTERPRISE').
+                # These are theme/category labels that appear between sections and are below the
+                # minimum section length. They fall through to the outer else branch and are then
+                # dropped by the _MIN_SECTION_CHARS check in the second loop.
+                if len(clean_next) < _MIN_SECTION_CHARS:
+                    break
+                story_parts.append(next_sec)
+                i += 1
+            merged.append("\n\n".join(story_parts))
+
+        elif _is_heading_only(sec):
+            # Category heading (bold-wrapped, e.g. '# **Headlines & Launches**') — drop it.
+            # TLDR-style newsletters use these as section dividers; the following stories
+            # each carry their own bold title and don't need the category context.
+            # Pure '#'-heading sections that are story titles are caught by _is_story_heading()
+            # before reaching this branch.
+            i += 1
+
         else:
             merged.append(sec)
             i += 1
@@ -399,6 +562,7 @@ def _extract_sections(html_text: str) -> list[dict]:
         sec = sec.strip()
         if not sec:
             continue
+        sec = _strip_leading_pipe(sec)        # strip table cell artifact prefix
 
         # Bullet-list aggregator detection: if the section contains 2+ list items
         # that each carry their own distinct link (product updates, job listings,
@@ -414,13 +578,19 @@ def _extract_sections(html_text: str) -> list[dict]:
         # Extract links from inline markdown syntax.
         # Normalize URLs before deduplication: strip tracking params, lowercase scheme/host.
         # When multiple links share the same normalized destination, keep the longest anchor text.
+        # Empty-anchor links ([](url)) are image links — TDV article images are wrapped in
+        # <a href="article-url"><img ...> which html2text renders as [](article-url). Collect
+        # these so the article URL is not lost; a named link to the same URL takes priority.
         best_by_norm: dict[str, dict] = {}
         for anchor, url in _MD_LINK_RE.findall(sec):
-            if not anchor:              # skip empty-anchor image links
-                continue
             if _is_boilerplate_url(url):
                 continue
             norm = _normalize_url(url)
+            if not anchor:
+                # Empty-anchor image link: only add if no entry already holds this URL.
+                if norm not in best_by_norm:
+                    best_by_norm[norm] = {"url": norm, "anchor_text": ""}
+                continue
             if norm not in best_by_norm:
                 best_by_norm[norm] = {"url": norm, "anchor_text": anchor}
             elif len(anchor) > len(best_by_norm[norm]["anchor_text"]):
@@ -553,14 +723,42 @@ def parse_emails(raw_messages: list[bytes]) -> list[StoryRecord]:
             section_text = section.get("text", "").strip()
             if not section_text:
                 continue
+            section_text = section_text.replace('\xa0', ' ')   # normalize non-breaking spaces
             title, body = _extract_title(section_text)
             if not body.strip():
                 body = section_text  # fallback: use full text if title stripped everything
-            link = _select_link(section.get("links", []))
+            if _is_table_artifact(body):           # skip if title extraction left only structural noise
+                continue
+            # Strip leading and trailing table-artifact '|' lines from body text
+            body = _strip_leading_pipe(body)
+            # Strip '****' markdown artifacts: html2text renders empty <strong></strong> as '****'.
+            # Four or more consecutive asterisks never appear in valid markdown (valid: **, *, ***).
+            body = re.sub(r'\*{4,}', '', body)
+            body = re.sub(r'(\s*\|)+\s*$', '', body).strip()
+            # Strip trailing lines that are table artifacts (e.g. '| |  SUBSCRIBE') or
+            # match the structural cell pattern '| |  TEXT' (pipe-ratio may be diluted in
+            # full-body check but is clearly structural when isolated as the final line).
+            body_lines = body.split('\n')
+            while body_lines:
+                last = body_lines[-1].strip()
+                if last and (
+                    _is_table_artifact(last)
+                    or re.match(r'^\|[\s\|]+\S', last) is not None
+                ):
+                    body_lines.pop()
+                else:
+                    break
+            body = '\n'.join(body_lines).strip()
+            # Strip trailing whitespace from each line: html2text appends '  ' (two spaces)
+            # before '\n' in table-cell content, producing '   \n' artifacts in body text.
+            body = '\n'.join(line.rstrip() for line in body.split('\n'))
+            if not body:                                         # skip if body is now empty
+                continue
+            links = _collect_links(section.get("links", []))
             results.append(StoryRecord(
                 title=title,
                 body=body,
-                link=link,
+                links=links,
                 newsletter=newsletter,
                 date=date_formatted,
             ))

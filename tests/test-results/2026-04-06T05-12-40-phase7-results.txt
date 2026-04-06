@@ -1,0 +1,25 @@
+Total story records: 29
+
+[1] title='Nvidia builds the tech stack for the robotics era'
+     body_start='Nvidia is betting on robots, without actually building any robots.\nOn Monday, CEO Jensen Huang unvei'
+     body_end='ies as soon as “next year.” Now, Nvidia is putting its money where its mouth is.'
+
+[2] title='Unleashing NVIDIA Blackwell Performance on IREN Cloud™'
+     body_start='GTC COVERAGE BROUGHT TO YOU BY IREN\n\nIREN’s Prince George data center campus is capable of housing o'
+     body_end="guage model revolution, and now it’s looking to do the same for AI's next stage."
+
+[3] title='Want To Give Every Employee The Power of AI?'
+     body_start='And, more importantly, want to do it _safely_ and _securely?_ Then you don’t need just any AI platfo'
+     body_end=' at night.\nWant to test Airia enterprise AI for yourself? Try a demo right here.'
+
+[4] title='Nvidia unveils a different vision of AI-in-space'
+     body_start='You may have heard of data centers on the ground, but now Nvidia chips are bringing them to space.\nA'
+     body_end=' the most visceral example being something as complex and far-reaching as space.'
+
+IREN cloud article records (should be 1): 1
+  title='Unleashing NVIDIA Blackwell Performance on IREN Cloud™'
+  body_start='GTC COVERAGE BROUGHT TO YOU BY IREN\n\nIREN’s Prince George data center campus is capable of housing over 20k NVIDIA Black'
+Nvidia robotics records: 1
+  body_length=2211
+  contains IREN cloud content: False
+  contains Our Deeper View continuation: False
