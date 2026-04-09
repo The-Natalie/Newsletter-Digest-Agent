@@ -171,11 +171,15 @@ Email Inbox (IMAP)
  Logic Filter Layer      — remove boilerplate/housekeeping sections (not short valid stories)
         │
         ▼
- Deduplication Layer     — embed body text, cluster by semantic similarity (within-run);
-                           select one representative item per cluster
+ LLM Noise Filter        — Claude pre-cluster structural noise removal (maximally conservative)
         │
         ▼
- LLM Filter Layer        — Claude binary keep/drop on deduplicated items (haiku, low-cost)
+ Deduplication Layer     — embed body text (threshold=0.55), cluster by semantic similarity (within-run);
+                           LLM pairwise refinement within clusters (same_story / related_but_distinct / different);
+                           select one representative item per final cluster
+        │
+        ▼
+ LLM Editorial Filter    — Claude binary keep/drop on deduplicated representatives (haiku, low-cost)
         │
         ▼
  Storage Layer           — SQLite stores the most recent digest output
@@ -323,8 +327,9 @@ Title and link are optional — untitled items and link-free items are valid sto
 
 **Operations:**
 - Encode each story item's body text using `sentence-transformers` (`all-MiniLM-L6-v2`, 22MB, CPU-compatible)
-- Run `util.community_detection` at cosine similarity threshold 0.78 to form clusters
-- From each cluster, select one representative item
+- Run `util.community_detection` at cosine similarity threshold `0.55` (high-recall grouping) to form candidate clusters
+- For each cluster containing more than one story, run an LLM pairwise refinement pass (`refine_clusters`): compare all C(n,2) pairs with a three-way classification — `same_story`, `related_but_distinct`, or `different`. Only `same_story` pairs are merged (union-find within the cluster). Fail-open: if the API call fails, the original embedding cluster is kept intact.
+- From each final cluster, select one representative item
 
 **Representative selection order** (applied in order; earlier criteria take priority):
 1. **Longest body text** — the item with the most complete extracted body
@@ -337,13 +342,25 @@ Title and link are optional — untitled items and link-free items are valid sto
 
 ---
 
-### Feature 5: LLM Keep/Drop Filter
+### Feature 4a: LLM Noise Filter (Pre-Cluster)
 
-**Purpose:** Apply a binary judgment pass using Claude to catch housekeeping noise, navigation sections, and low-signal content that slipped past the logic filter.
+**Purpose:** Remove obvious structural non-article content from parsed story items before embedding — capturing noise that the rule-based logic filter may miss.
+
+**What is removed:** Sponsor blocks, referral/referral-incentive prompts, newsletter intros/outros, polls, standalone CTAs, subscription management text.
+
+**What is NOT removed:** Any item that might be a real story. The filter is maximally conservative — when in doubt, keep. False positives (keeping structural noise) are caught by the downstream editorial filter; false negatives (removing valid stories) are unrecoverable at this stage.
+
+**Model:** `claude-haiku-4-5`. Batch size: 30. Fail-open: if the API call fails, all stories in that batch are kept.
+
+---
+
+### Feature 5: LLM Editorial Filter (Post-Dedup)
+
+**Purpose:** Apply a binary judgment pass using Claude to catch housekeeping noise, navigation sections, and low-signal content that slipped past the earlier filters.
 
 **Model:** `claude-haiku-4-5` (default). Configurable via `CLAUDE_MODEL` in `.env`.
 
-**Input:** Each deduplicated story item's body text (and title if present).
+**Input:** Each deduplicated representative story item's body text (and title if present).
 
 **Output:** `KEEP` or `DROP` for each item. No generated text, no rewriting.
 
@@ -489,7 +506,7 @@ CLAUDE_MODEL=claude-haiku-4-5
 # App Settings
 DATABASE_URL=sqlite+aiosqlite:///./data/digest.db
 MAX_EMAILS_PER_RUN=50
-DEDUP_THRESHOLD=0.78
+DEDUP_THRESHOLD=0.55
 HOST=0.0.0.0
 PORT=8000
 ```
@@ -664,8 +681,8 @@ The MVP is successful when a user can open the web interface, select a newslette
 - ✅ `ingestion/email_parser.py` — MIME parsing, BeautifulSoup pre-processing, html2text conversion, story segmentation, link and date extraction
 - ✅ `processing/embedder.py` — sentence-transformers encoding (in-memory), community_detection clustering
 - ✅ `processing/deduplicator.py` — cluster → representative story item selection (longest body → has title → real content URL)
-- ✅ `ai/claude_client.py` — binary keep/drop filter: Anthropic SDK async client, filter prompt, tool-use schema
-- ✅ `processing/digest_builder.py` — pipeline function; runs all stages end-to-end (ingestion → extraction → logic filter → embed/cluster → select representative → LLM filter → sort → store) and returns completed story list JSON
+- ✅ `ai/claude_client.py` — three LLM functions: `filter_noise` (pre-cluster noise removal), `refine_clusters` (pairwise three-way dedup refinement), `filter_stories` (editorial binary keep/drop)
+- ✅ `processing/digest_builder.py` — 7-stage pipeline: fetch → parse → noise filter → embed/cluster (0.55) → pairwise dedup refinement → select representative → LLM editorial filter → store; returns completed story list JSON
 - ✅ CLI entry point: `python -m processing.digest_builder --folder "AI Newsletters" --start 2026-03-10 --end 2026-03-17`
 
 **Validation:** Run against a real newsletter folder with at least two overlapping newsletters. Confirm at least one pair of near-duplicate items is merged into one. Confirm no valid short story was dropped. Confirm the full story list JSON is printed and written to the database.
@@ -765,9 +782,9 @@ The MVP is successful when a user can open the web interface, select a newslette
 ---
 
 ### Risk 4: Deduplication False Positives
-**Risk:** The 0.78 cosine similarity threshold may merge stories that are actually distinct — two different funding rounds in the same sector, for example.
+**Risk:** The embedding clustering threshold (0.55) may group stories that are actually distinct. The LLM pairwise refinement step provides a second check, but a poorly tuned threshold increases LLM cost and the chance of a false same_story classification.
 
-**Mitigation:** Make the threshold configurable in `.env` (`DEDUP_THRESHOLD=0.78`). Log cluster sizes in the pipeline output — clusters with more than 5 members are logged as warnings for manual inspection. Phase 4 includes threshold tuning based on real results from the user's actual newsletters.
+**Mitigation:** Threshold is configurable via `DEDUP_THRESHOLD=0.55` in `.env`. The LLM pairwise refinement layer (`refine_clusters`) catches false groupings at the cluster level: `related_but_distinct` and `different` pairs are not merged, even if the embedding clustered them together. Log cluster sizes — clusters with more than 5 members are logged as warnings for manual inspection. Phase 4 includes threshold tuning based on real results from the user's actual newsletters.
 
 ---
 
@@ -834,5 +851,5 @@ Cross-run dedup, story embeddings, and processed email tracking are deferred to 
 | 3 | `claude-haiku-4-5` binary keep/drop judgment is accurate enough for MVP filtering without missing valid short stories | Medium | Test with short roundup items in Phase 1 |
 | 4 | The user's newsletter folders contain only newsletters (email rules route them reliably) | High | User confirmed |
 | 5 | Blank-line and horizontal-rule heuristics are sufficient for story segmentation within typical newsletter emails | Medium | Test against real newsletters in Phase 1; refine if needed |
-| 6 | Dedup threshold of 0.78 is appropriate for the user's newsletter mix | Medium | Tune in Phase 4 based on actual results |
+| 6 | Embedding threshold of 0.55 + LLM pairwise refinement produces accurate dedup results for the user's newsletter mix | Medium | Tune threshold in Phase 4 based on actual results; adjust LLM prompt if same_story precision is low |
 | 7 | weasyprint can be installed cleanly on the target deployment environment | Medium | Validate during Phase 3 Dockerfile build; fall back to reportlab if not |

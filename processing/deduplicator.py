@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import dataclasses
 import logging
+from collections import defaultdict
 
 from ingestion.email_parser import StoryRecord
 
@@ -49,6 +50,67 @@ def select_representative(cluster: list[StoryRecord]) -> StoryRecord:
         links=merged_links,
         source_count=len(cluster),
     )
+
+
+def merge_confirmed_clusters(
+    clusters: list[list[StoryRecord]],
+    confirmed_pairs: list[tuple[int, int]],
+) -> list[list[StoryRecord]]:
+    """Merge Stage 1 clusters based on LLM-confirmed duplicate pairs.
+
+    Uses union-find with path compression to correctly handle transitivity:
+    if (A, B) and (B, C) are both confirmed, A+B+C are merged into one cluster.
+
+    Args:
+        clusters: Stage 1 cluster list from embed_and_cluster().
+        confirmed_pairs: List of (cluster_i, cluster_j) index pairs that the
+                         LLM confirmed as covering the same story.
+
+    Returns:
+        New cluster list with confirmed pairs merged. Unconfirmed clusters are
+        returned unchanged. Order of records within each merged cluster follows
+        the original cluster index order.
+    """
+    if not confirmed_pairs:
+        return clusters[:]
+
+    n = len(clusters)
+    parent = list(range(n))
+
+    def find(x: int) -> int:
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]  # path compression
+            x = parent[x]
+        return x
+
+    def union(x: int, y: int) -> None:
+        px, py = find(x), find(y)
+        if px != py:
+            parent[px] = py
+
+    for ci, cj in confirmed_pairs:
+        union(ci, cj)
+
+    # Group cluster indices by their root
+    groups: dict[int, list[int]] = defaultdict(list)
+    for i in range(n):
+        groups[find(i)].append(i)
+
+    # Build merged clusters: flatten records from all clusters in each group
+    result: list[list[StoryRecord]] = []
+    for cluster_indices in groups.values():
+        merged: list[StoryRecord] = []
+        for idx in sorted(cluster_indices):
+            merged.extend(clusters[idx])
+        result.append(merged)
+
+    logger.info(
+        "Merged %d cluster pair(s) → %d final cluster(s) (was %d)",
+        len(confirmed_pairs),
+        len(result),
+        n,
+    )
+    return result
 
 
 def deduplicate(clusters: list[list[StoryRecord]]) -> list[StoryRecord]:

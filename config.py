@@ -16,7 +16,7 @@ class Settings(BaseSettings):
 
     # Pipeline tuning
     max_emails_per_run: int = 50
-    dedup_threshold: float = 0.78
+    dedup_threshold: float = 0.55
 
     # Database
     database_url: str = "sqlite+aiosqlite:///./data/digest.db"

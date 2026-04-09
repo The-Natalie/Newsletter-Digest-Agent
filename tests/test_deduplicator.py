@@ -5,7 +5,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from ingestion.email_parser import StoryRecord
-from processing.deduplicator import select_representative, deduplicate
+from processing.deduplicator import select_representative, deduplicate, merge_confirmed_clusters
 
 
 def _record(
@@ -215,3 +215,65 @@ def test_deduplicate_source_count_set_on_representatives():
     result = deduplicate([cluster])
     assert len(result) == 1
     assert result[0].source_count == 4
+
+
+# ---------------------------------------------------------------------------
+# merge_confirmed_clusters tests
+# ---------------------------------------------------------------------------
+
+
+def test_merge_confirmed_no_pairs_returns_original():
+    """Empty confirmed_pairs → clusters returned unchanged."""
+    r1 = _record("Story A.")
+    r2 = _record("Story B.")
+    clusters = [[r1], [r2]]
+    result = merge_confirmed_clusters(clusters, [])
+    assert len(result) == 2
+
+
+def test_merge_confirmed_single_pair():
+    """One confirmed pair → those two clusters merged into one."""
+    r1 = _record("OpenAI announced GPT-5 with reasoning improvements.")
+    r2 = _record("OpenAI released GPT-5 featuring enhanced reasoning.")
+    clusters = [[r1], [r2]]
+    result = merge_confirmed_clusters(clusters, [(0, 1)])
+    assert len(result) == 1
+    assert len(result[0]) == 2
+    bodies = {r.body for r in result[0]}
+    assert r1.body in bodies
+    assert r2.body in bodies
+
+
+def test_merge_confirmed_transitivity():
+    """Pairs (0,1) and (1,2) → all three clusters merged into one."""
+    r1 = _record("Story alpha.")
+    r2 = _record("Story beta.")
+    r3 = _record("Story gamma.")
+    clusters = [[r1], [r2], [r3]]
+    result = merge_confirmed_clusters(clusters, [(0, 1), (1, 2)])
+    assert len(result) == 1
+    assert len(result[0]) == 3
+
+
+def test_merge_confirmed_unconfirmed_clusters_preserved():
+    """Clusters not in any confirmed pair remain as separate clusters."""
+    r1 = _record("Story A.")
+    r2 = _record("Story B.")
+    r3 = _record("Story C — unrelated, should stay separate.")
+    clusters = [[r1], [r2], [r3]]
+    result = merge_confirmed_clusters(clusters, [(0, 1)])
+    assert len(result) == 2
+    merged_bodies = {r.body for cluster in result for r in cluster}
+    assert r3.body in merged_bodies
+
+
+def test_merge_confirmed_multi_item_clusters():
+    """Clusters with multiple items each: merged cluster contains all items from both."""
+    r1a = _record("Story A version 1.")
+    r1b = _record("Story A version 2 — longer body with more detail about the announcement.")
+    r2a = _record("Story B version 1.")
+    r2b = _record("Story B version 2 — longer body with more detail about the second story.")
+    clusters = [[r1a, r1b], [r2a, r2b]]
+    result = merge_confirmed_clusters(clusters, [(0, 1)])
+    assert len(result) == 1
+    assert len(result[0]) == 4

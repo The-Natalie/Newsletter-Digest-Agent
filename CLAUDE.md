@@ -15,7 +15,7 @@ Full requirements: `PRD.md`
 | Backend | Python 3.11+, FastAPI, Uvicorn |
 | Database | SQLite via SQLAlchemy Core (async) + aiosqlite + Alembic |
 | Email | IMAPClient, html2text, BeautifulSoup4 + lxml |
-| AI / NLP | Anthropic SDK (`claude-haiku-4-5` default, binary filter only), sentence-transformers (`all-MiniLM-L6-v2`) |
+| AI / NLP | Anthropic SDK (`claude-haiku-4-5` default, noise filter + pairwise dedup refinement + editorial filter), sentence-transformers (`all-MiniLM-L6-v2`) |
 | PDF export | weasyprint (primary), reportlab (fallback) |
 | Frontend | Vanilla HTML/CSS/JS, Pico.css, marked.js (no build step) |
 | Config | pydantic-settings, python-dotenv |
@@ -86,7 +86,7 @@ newsletter-digest/
 The system is a **linear synchronous pipeline**. Each stage receives output from the previous and passes results forward. The API exposes the pipeline via a single POST endpoint that runs it end-to-end and returns the completed story list.
 
 ```
-IMAP → Ingestion → Extraction → Logic Filter → Embed/Cluster → Select Representative → LLM Filter → SQLite → HTTP Response → Frontend
+IMAP → Ingestion → Extraction → LLM Noise Filter → Embed/Cluster → LLM Pairwise Dedup Refinement → Select Representative → LLM Editorial Filter → SQLite → HTTP Response → Frontend
 ```
 
 The frontend POSTs a request, shows a loading state, and renders the story list when the response arrives.
@@ -122,23 +122,32 @@ Each extracted story item is a plain dict:
 ```
 Title and link are optional — untitled and link-free items are valid and must not be dropped.
 
+### LLM Noise Filter (pre-cluster)
+- Runs immediately after parsing, before embedding. Function: `filter_noise` in `ai/claude_client.py`.
+- Removes obvious structural non-article content: sponsor blocks, referral prompts, newsletter intros/outros, polls, CTAs, subscription/account text.
+- **Maximally conservative** — bias strongly toward keeping. Only removes items that are unambiguously structural noise, never editorial content.
+- Operates in batches of 30. Fail-open: if the API call fails, all stories in that batch are kept.
+- Separate from the Stage 7 editorial filter, which operates on deduplicated representatives and makes quality/relevance judgments.
+
 ### Logic Filter
 - Removes obvious boilerplate/housekeeping sections (unsubscribe footers, navigation blocks, pure CTA sections).
 - **Never filters by body length.** Short items (one sentence, a few words plus a link) are valid stories and must be preserved.
-- When in doubt, preserve the item. False positives are caught by the LLM filter; false negatives are unrecoverable.
+- When in doubt, preserve the item. False positives are caught by the LLM editorial filter; false negatives are unrecoverable.
 
 ### Deduplication
 - Within-run only. Embeddings are computed in memory and discarded after the run.
 - **Dedup signal: body text** — not title, not link. Two items describe the same story when their body text is semantically similar.
-- Threshold: `0.78` cosine similarity (configurable via `DEDUP_THRESHOLD` in `.env`).
+- Two-stage process:
+  1. **Embedding clustering** (`embed_and_cluster`): groups stories by cosine similarity at threshold `0.55` (configurable via `DEDUP_THRESHOLD`). High-recall — errs on the side of grouping.
+  2. **LLM pairwise refinement** (`refine_clusters`): for each multi-story cluster, compares all C(n,2) pairs and classifies each as `same_story`, `related_but_distinct`, or `different`. Only `same_story` pairs are merged (via union-find within each cluster). Fail-open: if the API call fails, the original embedding cluster is kept intact.
 - Model: `all-MiniLM-L6-v2` (22MB, CPU-compatible).
 - All items from the full date range are pooled into one pass. Same story on different dates within a run → keep earliest date.
 - **Representative selection** (in priority order): longest body → has title → real content URL.
 
-### LLM Filter
+### LLM Editorial Filter (post-dedup)
 - Default model: `claude-haiku-4-5`. Override via `CLAUDE_MODEL` in `.env`.
 - Binary **keep/drop** judgment only — no generation, no rewriting.
-- Drops navigation sections, housekeeping noise, and content-free items the logic filter missed.
+- Runs on deduplicated representatives only. Drops navigation sections, housekeeping noise, and content-free items the earlier filters missed.
 - Never drops short valid stories. Uncertainty defaults to KEEP.
 
 **Development-only flagging (no effect on production output or user-facing behavior):**
@@ -180,7 +189,7 @@ CLAUDE_MODEL=claude-haiku-4-5
 
 DATABASE_URL=sqlite+aiosqlite:///./data/digest.db
 MAX_EMAILS_PER_RUN=50
-DEDUP_THRESHOLD=0.78
+DEDUP_THRESHOLD=0.55
 HOST=0.0.0.0
 PORT=8000
 ```
@@ -211,7 +220,7 @@ All required vars are validated at startup by `config.py`. Missing vars raise a 
 | `PRD.md` | Full product requirements, scope decisions, and rationale |
 | `config.py` | All configuration; start here to understand env vars |
 | `processing/digest_builder.py` | Entry point for the pipeline; orchestrates all stages |
-| `ai/claude_client.py` | Binary keep/drop filter — Claude API call and tool-use schema |
+| `ai/claude_client.py` | Three LLM functions: `filter_noise` (pre-cluster noise removal), `refine_clusters` (pairwise dedup refinement), `filter_stories` (editorial keep/drop) |
 | `ingestion/email_parser.py` | HTML newsletter parsing and story segmentation; most likely source of extraction issues |
 | `static/app.js` | All frontend behavior |
 | `alembic/versions/` | DB migration history |

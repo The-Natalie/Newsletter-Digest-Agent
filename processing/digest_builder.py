@@ -4,22 +4,21 @@ import argparse
 import asyncio
 import json
 import logging
+import os
 import uuid
 from datetime import date, datetime, timezone
 
-import sqlalchemy as sa
-
-from ai.claude_client import generate_digest
-from ai.story_reviewer import review_story_groups
+from ai.claude_client import filter_noise, filter_stories, refine_clusters
 from database import async_session, digest_runs
 from ingestion.email_parser import parse_emails
 from ingestion.imap_client import fetch_emails
 from processing.deduplicator import deduplicate
 from processing.embedder import embed_and_cluster
+from config import settings
 
 logger = logging.getLogger(__name__)
 
-_MAX_STORY_GROUPS = 50  # MVP cap: applied after AI review, before generation (Phase 2: replace with batching)
+_FLAGS_PATH = "data/flags_latest.jsonl"
 
 
 async def build_digest(
@@ -28,6 +27,15 @@ async def build_digest(
     date_end: date,
 ) -> dict:
     """Run the full digest pipeline end-to-end and persist the result.
+
+    Pipeline stages:
+        1. Fetch emails from IMAP
+        2. Parse emails → StoryRecord list
+        3. LLM noise filter → remove obvious structural non-article content
+        4. Embed + cluster (threshold=settings.dedup_threshold)
+        5. LLM pairwise dedup refinement → same_story/related_but_distinct/different
+        6. Deduplicate → select one representative per final cluster
+        7. LLM editorial filter → binary keep/drop on representatives
 
     Args:
         folder: IMAP folder name to read newsletters from.
@@ -45,7 +53,6 @@ async def build_digest(
     run_id = str(uuid.uuid4())
     run_at = datetime.now(timezone.utc).replace(tzinfo=None)
 
-    # ── Insert pending row ──────────────────────────────────────────────────
     async with async_session() as session:
         await session.execute(
             digest_runs.insert().values(
@@ -59,67 +66,79 @@ async def build_digest(
         )
         await session.commit()
 
-    logger.info(
-        "Digest run started: id=%s folder='%s' %s→%s",
-        run_id[:8],
-        folder,
-        date_start,
-        date_end,
-    )
+    logger.info("Digest run started: id=%s folder='%s' %s→%s", run_id[:8], folder, date_start, date_end)
 
     try:
-        # ── Stage 1: Fetch emails ──────────────────────────────────────────
-        logger.info("Stage 1/6 — Fetching emails from '%s'", folder)
+        # ── Stage 1/7: Fetch emails ────────────────────────────────────────
+        logger.info("Stage 1/7 — Fetching emails from '%s'", folder)
         raw_emails = fetch_emails(folder, date_start, date_end)
-        logger.info("Stage 1/6 — Fetched %d raw email(s)", len(raw_emails))
+        logger.info("Stage 1/7 — Fetched %d raw email(s)", len(raw_emails))
 
-        # ── Stage 2: Parse emails ─────────────────────────────────────────
-        logger.info("Stage 2/6 — Parsing emails")
-        parsed_emails = parse_emails(raw_emails)
-        logger.info("Stage 2/6 — Parsed %d email(s)", len(parsed_emails))
+        # ── Stage 2/7: Parse emails ───────────────────────────────────────
+        logger.info("Stage 2/7 — Parsing emails into story records")
+        story_records = parse_emails(raw_emails)
+        logger.info("Stage 2/7 — Parsed %d story record(s)", len(story_records))
 
-        # ── Stage 3: Embed and cluster ────────────────────────────────────
-        logger.info("Stage 3/6 — Embedding and clustering story chunks")
-        clusters = embed_and_cluster(parsed_emails)
-        logger.info("Stage 3/6 — Produced %d cluster(s)", len(clusters))
+        # ── Stage 3/7: LLM noise filter ───────────────────────────────────
+        logger.info("Stage 3/7 — Running LLM noise filter on %d parsed item(s)", len(story_records))
+        before_noise = len(story_records)
+        story_records = await filter_noise(story_records)
+        noise_removed = before_noise - len(story_records)
+        logger.info("Stage 3/7 — %d item(s) after noise filter (%d removed)", len(story_records), noise_removed)
 
-        # ── Stage 4: Deduplicate ──────────────────────────────────────────
-        logger.info("Stage 4/6 — Deduplicating clusters into story groups")
-        story_groups = deduplicate(clusters)
-        logger.info("Stage 4/6 — Produced %d story group(s)", len(story_groups))
-
-        # ── Stage 5: AI review ────────────────────────────────────────────
-        logger.info("Stage 5/6 — Running AI review to filter non-story groups")
-        try:
-            reviewed_groups = await review_story_groups(story_groups, folder)
-        except Exception as exc:
-            logger.warning(
-                "AI review failed (%s) — continuing with all %d group(s) unfiltered",
-                exc,
-                len(story_groups),
-            )
-            reviewed_groups = story_groups
+        # ── Stage 4/7: Embed + cluster ────────────────────────────────────
         logger.info(
-            "Stage 5/6 — Review complete: %d group(s) kept (dropped %d)",
-            len(reviewed_groups),
-            len(story_groups) - len(reviewed_groups),
+            "Stage 4/7 — Embedding and clustering (threshold=%.2f)",
+            settings.dedup_threshold,
+        )
+        clusters = embed_and_cluster(story_records)
+        logger.info("Stage 4/7 — Produced %d cluster(s)", len(clusters))
+
+        # ── Stage 5/7: LLM pairwise dedup refinement ─────────────────────
+        logger.info("Stage 5/7 — LLM pairwise dedup refinement on %d cluster(s)", len(clusters))
+        clusters = await refine_clusters(clusters)
+        logger.info("Stage 5/7 — %d cluster(s) after refinement", len(clusters))
+
+        # ── Stage 6/7: Deduplicate ────────────────────────────────────────
+        logger.info("Stage 6/7 — Selecting representatives from %d cluster(s)", len(clusters))
+        representatives = deduplicate(clusters)
+        logger.info("Stage 6/7 — %d representative(s) selected", len(representatives))
+
+        # ── Stage 7/7: LLM editorial filter ──────────────────────────────
+        logger.info("Stage 7/7 — Running LLM keep/drop filter on %d story/stories", len(representatives))
+        kept, borderline_flags = await filter_stories(representatives, folder)
+        dropped_count = len(representatives) - len(kept)
+        logger.info(
+            "Stage 7/7 — Kept %d / %d (dropped %d, borderline %d)",
+            len(kept), len(representatives), dropped_count, len(borderline_flags),
         )
 
-        # Apply MVP cap after review (temporary constraint; Phase 2 replaces with batching)
-        if len(reviewed_groups) > _MAX_STORY_GROUPS:
-            logger.info(
-                "Capping story groups: %d → %d (MVP limit; Phase 2 will batch instead)",
-                len(reviewed_groups),
-                _MAX_STORY_GROUPS,
-            )
-            reviewed_groups = reviewed_groups[:_MAX_STORY_GROUPS]
+        # Write borderline flags file (development artifact, overwritten each run)
+        os.makedirs("data", exist_ok=True)
+        with open(_FLAGS_PATH, "w", encoding="utf-8") as f:
+            for flag in borderline_flags:
+                f.write(json.dumps(flag, ensure_ascii=False) + "\n")
 
-        # ── Stage 6: AI generation ────────────────────────────────────────
-        logger.info("Stage 6/6 — Generating digest entries via Claude")
-        stories = await generate_digest(reviewed_groups, folder)
-        logger.info("Stage 6/6 — Generated %d digest entry/entries", len(stories))
+        print(
+            f"Pipeline complete: {len(kept)} kept, {dropped_count} dropped, "
+            f"{len(borderline_flags)} flagged as borderline. "
+            f"Flagged records written to {_FLAGS_PATH}."
+        )
 
         # ── Build response dict ───────────────────────────────────────────
+        stories = [
+            {
+                "title": r.title,
+                "body": r.body,
+                "link": r.links[0] if r.links else None,
+                "links": r.links,
+                "newsletter": r.newsletter,
+                "date": r.date,
+                "source_count": r.source_count,
+            }
+            for r in kept
+        ]
+
         response: dict = {
             "id": run_id,
             "generated_at": run_at.strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -130,7 +149,6 @@ async def build_digest(
             "stories": stories,
         }
 
-        # ── Update DB: complete ───────────────────────────────────────────
         async with async_session() as session:
             await session.execute(
                 digest_runs.update()
@@ -143,24 +161,16 @@ async def build_digest(
             )
             await session.commit()
 
-        logger.info(
-            "Digest run complete: id=%s stories=%d",
-            run_id[:8],
-            len(stories),
-        )
+        logger.info("Digest run complete: id=%s stories=%d", run_id[:8], len(stories))
         return response
 
     except Exception as exc:
-        # ── Update DB: failed ─────────────────────────────────────────────
         logger.error("Digest run failed: id=%s error=%s", run_id[:8], exc)
         async with async_session() as session:
             await session.execute(
                 digest_runs.update()
                 .where(digest_runs.c.id == run_id)
-                .values(
-                    status="failed",
-                    error_message=str(exc),
-                )
+                .values(status="failed", error_message=str(exc))
             )
             await session.commit()
         raise
@@ -172,17 +182,10 @@ if __name__ == "__main__":
         format="%(asctime)s %(levelname)-8s %(name)s — %(message)s",
         datefmt="%H:%M:%S",
     )
-
-    parser = argparse.ArgumentParser(
-        description="Generate a newsletter digest from an IMAP folder."
-    )
+    parser = argparse.ArgumentParser(description="Generate a newsletter digest from an IMAP folder.")
     parser.add_argument("--folder", required=True, help="IMAP folder name")
-    parser.add_argument("--start", required=True, metavar="YYYY-MM-DD", help="Start date (inclusive)")
-    parser.add_argument("--end", required=True, metavar="YYYY-MM-DD", help="End date (inclusive)")
+    parser.add_argument("--start", required=True, metavar="YYYY-MM-DD")
+    parser.add_argument("--end", required=True, metavar="YYYY-MM-DD")
     args = parser.parse_args()
-
-    date_start = date.fromisoformat(args.start)
-    date_end = date.fromisoformat(args.end)
-
-    result = asyncio.run(build_digest(args.folder, date_start, date_end))
+    result = asyncio.run(build_digest(args.folder, date.fromisoformat(args.start), date.fromisoformat(args.end)))
     print(json.dumps(result, indent=2, ensure_ascii=False))
