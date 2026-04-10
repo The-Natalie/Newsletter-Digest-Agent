@@ -7,6 +7,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 from api.digests import router as digests_router
+from api.export import router as export_router
 from api.health import router as health_router
 from config import settings
 
@@ -21,6 +22,7 @@ app = FastAPI(title="Newsletter Digest Agent")
 # API routers — registered before static mount
 app.include_router(health_router, prefix="/api")
 app.include_router(digests_router, prefix="/api/digests")
+app.include_router(export_router, prefix="/api/digests")
 
 # Static files — MUST be last; catches all remaining paths
 app.mount("/", StaticFiles(directory="static", html=True), name="static")

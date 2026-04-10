@@ -5,6 +5,7 @@ import asyncio
 import json
 import logging
 import os
+import re
 import uuid
 from datetime import date, datetime, timezone
 
@@ -19,6 +20,83 @@ from config import settings
 logger = logging.getLogger(__name__)
 
 _FLAGS_PATH = "data/flags_latest.jsonl"
+
+# ---------------------------------------------------------------------------
+# Presentation-layer body normalization
+# Applied to body text when building the response dict, after all pipeline
+# stages, so embedding/LLM inputs are unaffected.
+# ---------------------------------------------------------------------------
+
+_BOLD_RE = re.compile(r'\*\*([^*\n]+)\*\*')          # **bold**
+_BOLD_UNDER_RE = re.compile(r'__([^_\n]+)__')          # __bold__
+_ITALIC_RE = re.compile(r'(?<![*\w])\*(?! )([^*\n]+?)(?<! )\*(?![*\w])')  # *italic* (no space after opening *)
+_ITALIC_UNDER_RE = re.compile(r'(?<!\w)_([^_\n]+)_(?!\w)')    # _italic_
+
+
+def _normalize_body(text: str) -> str:
+    """Strip markdown/newsletter formatting artifacts for clean presentation.
+
+    Transformations applied (in order):
+      1. Heading markers removed:           ## Heading  → Heading
+      2. Bold markers removed:              **text**    → text,  __text__ → text
+      3. Italic markers removed:            *text*      → text,  _text_   → text
+      4. Stray ** pairs removed (orphaned after pass 2)
+      4b. Stray single _ flanked by non-word chars removed
+      5. Inline bullet markers line-separated: " * item" → "\\n* item"
+      6. Table separator lines removed (lines of -, |, :)
+      7. Block bullet symbols removed:      ■  ▪
+      8. Excess whitespace collapsed:       2+ spaces → 1, 3+ newlines → 2
+    """
+    # 1. Heading markers
+    text = re.sub(r'^#{1,6}\s+', '', text, flags=re.MULTILINE)
+    # 2. Bold
+    text = _BOLD_RE.sub(r'\1', text)
+    text = _BOLD_UNDER_RE.sub(r'\1', text)
+    # 3. Italic
+    text = _ITALIC_RE.sub(r'\1', text)
+    text = _ITALIC_UNDER_RE.sub(r'\1', text)
+    # 4. Stray ** remaining after emphasis pass
+    text = re.sub(r'\*\*', '', text)
+    # 4b. Stray single _ flanked by non-word chars (e.g. `._. ` artifacts)
+    text = re.sub(r'(?<!\w)_(?!\w)', '', text)
+    # 5. Inline bullet markers: html2text sometimes emits `* item1 * item2` on one
+    #    line. Convert each space-asterisk-space (not already at a line start) to a
+    #    newline + bullet so items are individually line-separated.
+    text = re.sub(r' \* ', '\n* ', text)
+    # 6. Table separator lines
+    text = re.sub(r'^\s*[-|:]{3,}\s*$', '', text, flags=re.MULTILINE)
+    # 7. Block bullet symbols
+    text = text.replace('■', '').replace('▪', '')
+    # 8. Whitespace
+    text = re.sub(r'[ \t]{2,}', ' ', text)
+    text = re.sub(r'\n{3,}', '\n\n', text)
+    return text.strip()
+
+
+def _normalize_title(text: str | None) -> str | None:
+    """Strip formatting markers and leading decorator symbols from story titles.
+
+    Transformations applied (in order):
+      1. Bold markers removed:              **text** → text,  __text__ → text
+      2. Remaining stray asterisks removed
+      3. Leading non-content symbols stripped (block chars, bullets, ■ ▪ • etc.)
+      4. Whitespace normalized
+    Returns None if the title is empty after cleanup.
+    """
+    if not text:
+        return None
+    # 1. Bold markers
+    text = _BOLD_RE.sub(r'\1', text)
+    text = _BOLD_UNDER_RE.sub(r'\1', text)
+    # 2. Remaining asterisks (stray * from unmatched emphasis)
+    text = re.sub(r'\*+', '', text)
+    # 3. Strip leading characters that are not word chars, digits, quotes, or
+    #    sentence-starting punctuation. Catches ■, ▪, •, ►, →, ✔ and other
+    #    Unicode block/symbol chars used as newsletter bullet decorators.
+    text = re.sub(r'^[^\w\'"(]+(?=\S)', '', text)
+    # 4. Normalize whitespace
+    text = re.sub(r'[ \t]{2,}', ' ', text)
+    return text.strip() or None
 
 
 async def build_digest(
@@ -128,8 +206,8 @@ async def build_digest(
         # ── Build response dict ───────────────────────────────────────────
         stories = [
             {
-                "title": r.title,
-                "body": r.body,
+                "title": _normalize_title(r.title),
+                "body": _normalize_body(r.body),
                 "link": r.links[0] if r.links else None,
                 "links": r.links,
                 "newsletter": r.newsletter,
