@@ -1,0 +1,142 @@
+/*
+ * style.css — Browser UI overrides only.
+ *
+ * This file controls ONLY the website appearance.
+ * PDF styling is entirely separate and lives in api/export.py
+ * (_build_html inline CSS for weasyprint, ParagraphStyle objects for reportlab).
+ * Editing this file has no effect on exported PDFs.
+ *
+ * Pico.css v2 handles base layout, forms, buttons, article cards, and the
+ * progress bar automatically via semantic HTML. Only add rules here for things
+ * Pico doesn't provide or that you want to override.
+ */
+
+
+/* ==========================================================================
+   PAGE HEADER
+   ========================================================================== */
+
+header .subtitle {
+  color: var(--pico-muted-color);
+}
+
+
+/* ==========================================================================
+   FORM — folder input, preset buttons, date range, error state
+   ========================================================================== */
+
+/* Preset shortcut buttons row */
+#presets {
+  margin-bottom: var(--pico-spacing);
+}
+
+#presets button {
+  font-size: 0.85rem;
+  padding: 0.25rem 0.75rem;
+}
+
+/* Validation error shown below the date row */
+.form-error {
+  color: var(--pico-color-red-550);
+  font-size: 0.9rem;
+  margin-top: calc(var(--pico-spacing) * -0.5);
+}
+
+
+/* ==========================================================================
+   RESULTS HEADER — digest title/meta on the left, Download PDF on the right
+   ========================================================================== */
+
+#results-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: var(--pico-spacing);
+  flex-wrap: wrap;
+}
+
+#results-header hgroup {
+  margin: 0;
+}
+
+#results-header hgroup h2 {
+  margin: 0;
+}
+
+.results-meta {
+  color: var(--pico-muted-color);
+  font-size: 0.9rem;
+  margin: 0.25rem 0 0;
+}
+
+
+/* ==========================================================================
+   STORY CARDS
+   Pico styles <article> as a card automatically. Rules here only adjust
+   internal spacing and typography — feel free to edit freely.
+   ========================================================================== */
+
+#story-list article {
+  margin-bottom: 0;
+}
+
+#story-list article header {
+  margin-bottom: 0.5rem;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+#story-list article header h3 {
+  margin: 0 0 0.2rem;
+  font-size: 1.1rem;
+}
+
+/* Newsletter · date line */
+.story-meta {
+  color: var(--pico-muted-color);
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+/* Body text */
+.story-body {
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+/* Remove extra top margin from the first paragraph in each story body */
+.story-body > p:first-child {
+  margin-top: 0;
+}
+
+
+/* ==========================================================================
+   STORY RESOURCES (links)
+   ========================================================================== */
+
+.resources-label {
+  font-size: 0.85rem;
+  color: var(--pico-muted-color);
+  margin: 0.5rem 0 0.25rem;
+}
+
+.resources {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.resources li {
+  margin: 0.1rem 0;
+}
+
+
+/* ==========================================================================
+   LOADING INDICATOR
+   ========================================================================== */
+
+#loading {
+  margin: var(--pico-spacing) 0;
+}

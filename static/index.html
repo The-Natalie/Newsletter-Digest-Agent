@@ -1,5 +1,66 @@
 <!DOCTYPE html>
-<html lang="en">
-<head><meta charset="UTF-8"><title>Newsletter Digest</title></head>
-<body><p>Frontend coming in Phase 3.</p></body>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Newsletter Digest</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="container">
+    <header>
+      <h1>Newsletter Digest</h1>
+      <p class="subtitle">Generate a deduplicated digest from your newsletters.</p>
+    </header>
+
+    <section id="form-section">
+      <form id="digest-form">
+        <label for="folder">
+          Folder
+          <input type="text" id="folder" name="folder" placeholder="AI Newsletters" autocomplete="off" required>
+        </label>
+
+        <div id="presets" role="group">
+          <button type="button" class="outline secondary" data-folder="AI Newsletters">AI Newsletters</button>
+          <button type="button" class="outline secondary" data-folder="Tech">Tech</button>
+          <button type="button" class="outline secondary" data-folder="Finance">Finance</button>
+        </div>
+
+        <div class="grid">
+          <label for="date-start">
+            From
+            <input type="date" id="date-start" name="date_start" required>
+          </label>
+          <label for="date-end">
+            To
+            <input type="date" id="date-end" name="date_end" required>
+          </label>
+        </div>
+
+        <p id="form-error" class="form-error" aria-live="polite" hidden></p>
+
+        <button type="submit" id="generate-btn">Generate Digest</button>
+      </form>
+    </section>
+
+    <progress id="loading" aria-label="Generating digest…" hidden></progress>
+
+    <section id="results" hidden>
+      <div id="results-header">
+        <hgroup>
+          <h2 id="results-title"></h2>
+          <p id="results-meta" class="results-meta"></p>
+        </hgroup>
+        <a id="pdf-link" href="#" role="button" class="outline secondary" target="_blank">
+          Download PDF
+        </a>
+      </div>
+      <div id="story-list"></div>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="app.js"></script>
+</body>
 </html>
