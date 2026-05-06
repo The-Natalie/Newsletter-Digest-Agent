@@ -1,3 +1,11 @@
+import os
+import sys
+
+# Temporary debug: print env vars Railway is injecting
+_relevant = {k: v[:4] + "..." for k, v in os.environ.items()
+             if any(x in k.upper() for x in ("IMAP", "ANTHROPIC", "CLAUDE", "DATABASE"))}
+print(f"DEBUG env vars visible at startup: {_relevant}", file=sys.stderr, flush=True)
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
