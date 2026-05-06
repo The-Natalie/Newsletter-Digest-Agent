@@ -44,6 +44,7 @@ def do_run_migrations(connection):
 
 async def run_migrations_online() -> None:
     """Run migrations in 'online' mode using an async engine."""
+    os.makedirs("data", exist_ok=True)
     connectable = create_async_engine(settings.database_url, echo=False)
     async with connectable.connect() as connection:
         await connection.run_sync(do_run_migrations)
